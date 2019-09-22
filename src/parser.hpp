@@ -56,22 +56,28 @@ namespace gynjo {
 		}
 	}
 
-	using parse_result = std::variant<ast::ptr, std::string>;
+	using parse_result = tl::expected<ast::ptr, std::string>;
 	using token_it = std::vector<tok::token>::const_iterator;
 
 	auto parse_expr(token_it begin, token_it end) -> parse_result {
-		if (begin == end) { return "expected expression"; }
+		using namespace std::string_literals;
+		if (begin == end) { return tl::unexpected{"expected expression"s}; }
 		return match(
 			*begin,
-			[&](tok::lft const& lft) -> parse_result { auto expr = parse_expr(begin + 1, end); },
+			[&](tok::lft const&) -> parse_result {
+				auto expr = parse_expr(begin + 1, end);
+				return expr;
+			},
 			[](tok::num const& num) -> parse_result { return make_ast(ast::num{num.value}); },
 			[](tok::sym const& sym) -> parse_result { return make_ast(ast::sym{sym.name}); },
-			[](auto const& t) -> parse_result { return "unexpected token in expression: " + to_string(t); });
+			[](auto const& t) -> parse_result {
+				return tl::unexpected{"unexpected token in expression: " + to_string(t)};
+			});
 	}
 
 	auto parse(std::vector<tok::token> tokens) -> parse_result {
 		auto result = parse_expr(tokens.begin(), tokens.end());
-		if (std::holds_alternative<ast::ptr>(result)) { log("parsed {}\n", to_string(std::get<ast::ptr>(result))); }
+		if (result.has_value()) { log("parsed {}\n", to_string(result.value())); }
 		return result;
 	}
 }
@@ -94,5 +100,6 @@ TEST_CASE("parser") {
 	auto const actual = parse(
 		std::vector<tok::token>{tok::num{5}, tok::mul{}, tok::lft{}, tok::num{1}, tok::add{}, tok::num{2}, tok::rht{}});
 
-	CHECK(to_string(expected) == to_string(std::get<ast::ptr>(actual)));
+	CHECK(actual.has_value());
+	CHECK(to_string(expected) == to_string(actual.value()));
 }

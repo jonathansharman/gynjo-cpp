@@ -9,57 +9,55 @@
 #include <cmath>
 
 namespace gynjo {
-	using eval_result = std::variant<double, std::string>;
+	using eval_result = tl::expected<double, std::string>;
 
 	auto eval(ast::ptr const& ast) -> eval_result;
 
 	template <typename F>
 	auto eval_binary(ast::ptr const& a, ast::ptr const& b, F&& f) -> eval_result {
-		return match(
-			eval(a),
-			[](std::string const& error) { return eval_result{error}; },
-			[&](double a) {
-				return match(
-					eval(b),
-					[](std::string const& error) { return eval_result{error}; },
-					[&](double b) { return eval_result{std::forward<F>(f)(a, b)}; });
+		return eval(a) //
+			.and_then([&](double a) { //
+				return eval(b) //
+					.and_then([&](double b) { //
+						return std::forward<F>(f)(a, b);
+					});
 			});
 	}
 
 	auto eval(ast::ptr const& ast) -> eval_result {
+		using namespace std::string_literals;
 		return match(
 			*ast,
-			[](ast::add const& add) { return eval_binary(add.a, add.b, [](double a, double b) { return a + b; }); },
-			[](ast::sub const& sub) { return eval_binary(sub.a, sub.b, [](double a, double b) { return a - b; }); },
-			[](ast::mul const& mul) { return eval_binary(mul.a, mul.b, [](double a, double b) { return a * b; }); },
+			[](ast::add const& add) {
+				return eval_binary(add.a, add.b, [](double a, double b) -> eval_result { return a + b; });
+			},
+			[](ast::sub const& sub) {
+				return eval_binary(sub.a, sub.b, [](double a, double b) -> eval_result { return a - b; });
+			},
+			[](ast::mul const& mul) {
+				return eval_binary(mul.a, mul.b, [](double a, double b) -> eval_result { return a * b; });
+			},
 			[](ast::div const& div) {
-				return eval_binary(div.a, div.b, [](double a, double b) { return b == 0.0 ? eval_result{""} : a / b; });
+				return eval_binary(div.a, div.b, [](double a, double b) -> eval_result {
+					if (b == 0.0) return tl::unexpected{"division by zero"s};
+					return a / b;
+				});
 			},
 			[](ast::exp const& exp) {
-				return eval_binary(exp.a, exp.b, [](double a, double b) { return std::pow(a, b); });
+				return eval_binary(exp.a, exp.b, [](double a, double b) -> eval_result { return std::pow(a, b); });
 			},
-			[](ast::num const& num) { return eval_result{num.value}; },
-			[](ast::sym const& sym) {
+			[](ast::num const& num) -> eval_result { return num.value; },
+			[](ast::sym const& sym) -> eval_result {
 				(void)sym;
-				return eval_result{0.0};
+				return 0.0;
 			});
 	}
 
 	auto eval(std::string input) {
-		return match(
-			lex(input),
-			[](std::string const& error) { return "Lex error: " + error; },
-			[](std::vector<tok::token> const& tokens) {
-				return match(
-					parse(tokens),
-					[](std::string const& error) { return "Parse error: " + error; },
-					[](ast::ptr const& ast) {
-						return match(
-							eval(ast),
-							[](std::string const& error) { return "Eval error: " + error; },
-							[](double result) { return std::to_string(result); });
-					});
-			});
+		return lex(input)
+			.and_then([](auto const& result) { return parse(result); })
+			.and_then([](auto const& result) { return eval(result); })
+			.map([](auto const& result) { return std::to_string(result); });
 	}
 }
 
@@ -80,5 +78,6 @@ TEST_CASE("interpreter") {
 				make_ast(ast::num{1}),
 				make_ast(ast::num{2})})}));
 
-	CHECK(expected == doctest::Approx(std::get<double>(actual)));
+	CHECK(actual.has_value());
+	CHECK(expected == doctest::Approx(actual.value()));
 }

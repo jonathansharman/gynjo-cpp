@@ -6,6 +6,8 @@
 #include "logger.hpp"
 #include "visitation.hpp"
 
+#include <tl/expected.hpp>
+
 #include <compare>
 #include <functional>
 #include <memory>
@@ -50,21 +52,24 @@ namespace gynjo {
 		using token = std::variant<add, sub, mul, div, exp, lft, rht, num, sym>;
 
 		auto to_string(token token) -> std::string {
+			using namespace std::string_literals;
 			return match(
 				token,
-				[&](add const&) { return std::string{"+"}; },
-				[&](sub const&) { return std::string{"-"}; },
-				[&](mul const&) { return std::string{"*"}; },
-				[&](div const&) { return std::string{"/"}; },
-				[&](exp const&) { return std::string{"^"}; },
-				[&](lft const&) { return std::string{"("}; },
-				[&](rht const&) { return std::string{")"}; },
+				[&](add const&) { return "+"s; },
+				[&](sub const&) { return "-"s; },
+				[&](mul const&) { return "*"s; },
+				[&](div const&) { return "/"s; },
+				[&](exp const&) { return "^"s; },
+				[&](lft const&) { return "("s; },
+				[&](rht const&) { return ")"s; },
 				[&](num const& n) { return std::to_string(n.value); },
 				[&](sym const& s) { return s.name; });
 		}
 	}
 
-	auto lex(std::string input) -> std::variant<std::vector<tok::token>, std::string> {
+	auto lex(std::string input) -> tl::expected<std::vector<tok::token>, std::string> {
+		using namespace std::string_literals;
+
 		std::vector<std::pair<std::regex, std::function<std::optional<tok::token>(std::smatch const&)>>> map{//
 			{std::regex{R"...(\+)..."}, [](std::smatch const&) { return tok::add{}; }},
 			{std::regex{R"...(-)..."}, [](std::smatch const&) { return tok::sub{}; }},
@@ -91,7 +96,7 @@ namespace gynjo {
 					std::advance(it, token_match.length());
 				}
 			}
-			if (!found) { return "unrecognized token"; }
+			if (!found) { return tl::unexpected{"unrecognized token"s}; }
 		}
 		log("lexed [");
 		if (!result.empty()) {
@@ -116,7 +121,8 @@ TEST_CASE("lexer") {
 	auto const expected = std::vector<tok::token>{
 		tok::num{5}, tok::mul{}, tok::lft{}, tok::num{1}, tok::add{}, tok::num{2}, tok::rht{}};
 
-	auto const actual = lex("5*(1+2)");
+	auto const actual = lex("5*( 1+	2)");
 
-	CHECK(expected == std::get<std::vector<tok::token>>(actual));
+	CHECK(actual.has_value());
+	CHECK(expected == actual.value());
 }

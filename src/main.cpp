@@ -13,14 +13,14 @@
 #include <string>
 
 auto main(int argc, char* argv[]) -> int {
-	int result = 0;
+	int main_result = 0;
 
 #ifdef _DEBUG
 	doctest::Context context;
 	context.setOption("no-breaks", false);
 	context.setOption("success", false);
 	context.applyCommandLine(argc, argv);
-	result = context.run();
+	main_result = context.run();
 #else
 	// Command-line arguments unused in release build. Supress unused variable warnings.
 	(void)argc;
@@ -32,8 +32,9 @@ auto main(int argc, char* argv[]) -> int {
 		std::string line;
 		std::getline(std::cin, line);
 		if (line == "exit" || line == "quit") break;
-		std::cout << gynjo::eval(line) << '\n';
+		auto eval_result = gynjo::eval(line);
+		std::cout << eval_result.value_or(eval_result.error()) << '\n';
 	}
 
-	return result;
+	return main_result;
 }
