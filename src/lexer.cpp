@@ -20,6 +20,7 @@ namespace gynjo {
 		static std::vector<std::pair<std::regex, match_to_token>> map{//
 			{std::regex{R"...(\+)..."}, [](std::smatch const&) { return tok::add{}; }},
 			{std::regex{R"...(-)..."}, [](std::smatch const&) { return tok::sub{}; }},
+			{std::regex{R"...(\*\*)..."}, [](std::smatch const&) { return tok::exp{}; }},
 			{std::regex{R"...(\*)..."}, [](std::smatch const&) { return tok::mul{}; }},
 			{std::regex{R"...(/)..."}, [](std::smatch const&) { return tok::div{}; }},
 			{std::regex{R"...(\^)..."}, [](std::smatch const&) { return tok::exp{}; }},

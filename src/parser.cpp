@@ -44,12 +44,44 @@ namespace gynjo {
 				});
 		}
 
-		auto parse_exponents(token_it begin, token_it end) -> subparse_result {
-			return parse_atom(begin, end);
+		auto parse_exponentials(token_it begin, token_it end) -> subparse_result {
+			return parse_atom(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+				auto [it, exponentials] = std::move(result);
+				while (it != end && std::holds_alternative<tok::exp>(*it)) {
+					auto const token = *it;
+					auto next_result = parse_atom(it + 1, end);
+					if (next_result.has_value()) {
+						auto [next_end, next_exponential] = std::move(next_result.value());
+						exponentials = ast::make_ast(ast::exp{std::move(exponentials), std::move(next_exponential)});
+						it = next_end;
+					} else {
+						return tl::unexpected{"expected expression"s};
+					}
+				}
+				return std::pair{it, std::move(exponentials)};
+			});
 		}
 
 		auto parse_factors(token_it begin, token_it end) -> subparse_result {
-			return parse_exponents(begin, end);
+			return parse_exponentials(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+				auto [it, factors] = std::move(result);
+				while (it != end && (std::holds_alternative<tok::mul>(*it) || std::holds_alternative<tok::div>(*it))) {
+					auto const token = *it;
+					auto next_result = parse_exponentials(it + 1, end);
+					if (next_result.has_value()) {
+						auto [next_end, next_factor] = std::move(next_result.value());
+						if (std::holds_alternative<tok::mul>(token)) {
+							factors = ast::make_ast(ast::mul{std::move(factors), std::move(next_factor)});
+						} else {
+							factors = ast::make_ast(ast::div{std::move(factors), std::move(next_factor)});
+						}
+						it = next_end;
+					} else {
+						return tl::unexpected{"expected exponential"s};
+					}
+				}
+				return std::pair{it, std::move(factors)};
+			});
 		}
 
 		auto parse_terms(token_it begin, token_it end) -> subparse_result {
@@ -75,23 +107,7 @@ namespace gynjo {
 		}
 
 		auto parse_expr(token_it begin, token_it end) -> subparse_result {
-			{
-				auto result = parse_terms(begin, end);
-				if (result.has_value()) { return std::move(result.value()); }
-			}
-			{
-				auto result = parse_factors(begin, end);
-				if (result.has_value()) { return std::move(result.value()); }
-			}
-			{
-				auto result = parse_exponents(begin, end);
-				if (result.has_value()) { return std::move(result.value()); }
-			}
-			{
-				auto result = parse_atom(begin, end);
-				if (result.has_value()) { return std::move(result.value()); }
-			}
-			return tl::unexpected{"unrecognized expression"s};
+			return parse_terms(begin, end);
 		}
 
 		auto parse(token_it begin, token_it end) -> parse_result {
