@@ -45,7 +45,7 @@ namespace gynjo::ast {
 		return std::make_unique<ast::val>(std::forward<T>(val));
 	}
 
-	auto to_string(ptr const& ast) -> std::string {
+	inline auto to_string(ptr const& ast) -> std::string {
 		return match(
 			*ast,
 			[](add const& add) { return "(" + to_string(add.a) + " + " + to_string(add.b) + ")"; },

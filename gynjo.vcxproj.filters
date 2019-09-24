@@ -9,6 +9,15 @@
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\parser.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lexer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interpreter.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\visitation.hpp">
@@ -24,6 +33,12 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\logger.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tokens.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ast.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

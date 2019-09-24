@@ -42,7 +42,7 @@ namespace gynjo::tok {
 
 	using token = std::variant<add, sub, mul, div, exp, lft, rht, num, sym>;
 
-	auto to_string(token token) -> std::string {
+	inline auto to_string(token token) -> std::string {
 		using namespace std::string_literals;
 		return match(
 			token,
