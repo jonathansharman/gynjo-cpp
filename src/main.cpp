@@ -27,12 +27,13 @@ auto main(int argc, char* argv[]) -> int {
 	(void)argv;
 #endif
 
+	gynjo::environment env;
 	for (;;) {
 		std::cout << ">> ";
 		std::string line;
 		std::getline(std::cin, line);
 		if (line == "exit" || line == "quit") break;
-		auto const eval_result = gynjo::eval(line);
+		auto const eval_result = gynjo::eval(env, line);
 		std::cout << (eval_result.has_value() ? std::to_string(eval_result.value()) : eval_result.error()) << '\n';
 	}
 

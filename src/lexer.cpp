@@ -18,7 +18,8 @@ namespace gynjo {
 
 		using match_to_token = std::function<std::optional<tok::token>(std::smatch const&)>;
 		static std::vector<std::pair<std::regex, match_to_token>> map{//
-			{std::regex{R"...(\+)..."}, [](std::smatch const&) { return tok::add{}; }},
+			{std::regex{R"...(=)..."}, [](std::smatch const&) { return tok::eq{}; }},
+			{std::regex{R"...(\+)..."}, [](std::smatch const&) { return tok::plus{}; }},
 			{std::regex{R"...(-)..."}, [](std::smatch const&) { return tok::sub{}; }},
 			{std::regex{R"...(\*\*)..."}, [](std::smatch const&) { return tok::exp{}; }},
 			{std::regex{R"...(\*)..."}, [](std::smatch const&) { return tok::mul{}; }},
@@ -34,17 +35,21 @@ namespace gynjo {
 		std::vector<tok::token> result;
 		for (auto it = input.cbegin(); it != input.cend();) {
 			bool found = false;
+			std::smatch token_match;
 			for (auto const& [regex, get_token] : map) {
-				std::smatch token_match;
 				if (std::regex_search(it, input.cend(), token_match, regex, std::regex_constants::match_continuous)) {
 					found = true;
 					if (auto const maybe_token = get_token(token_match)) {
 						if (maybe_token) { result.push_back(*maybe_token); }
 					}
 					std::advance(it, token_match.length());
+					break;
 				}
 			}
-			if (!found) { return tl::unexpected{"unrecognized token"s}; }
+			if (!found) {
+				std::regex_search(it, input.cend(), token_match, std::regex{R"...(\W+)..."});
+				return tl::unexpected{fmt::format("unrecognized token: '{}'", token_match.str())};
+			}
 		}
 		log("lexed");
 		for (auto const& token : result) {
@@ -63,10 +68,25 @@ namespace gynjo {
 TEST_CASE("lexer") {
 	using namespace gynjo;
 
-	auto const expected = std::vector<tok::token>{
-		tok::num{5}, tok::mul{}, tok::lft{}, tok::num{1}, tok::add{}, tok::num{2}, tok::rht{}};
+	auto const expected = std::vector<tok::token>{//
+		tok::num{5},
+		tok::mul{},
+		tok::lft{},
+		tok::num{1},
+		tok::plus{},
+		tok::sub{},
+		tok::num{2},
+		tok::rht{},
+		tok::exp{},
+		tok::exp{},
+		tok::mul{},
+		tok::eq{},
+		tok::div{},
+		tok::num{.1},
+		tok::num{0},
+		tok::num{0.1}};
 
-	auto const actual = lex("5*( 1+	2)");
+	auto const actual = lex("5*( 1+	-2)^***  =/ .1 0 0.1");
 
 	CHECK(actual.has_value());
 	CHECK(expected == actual.value());

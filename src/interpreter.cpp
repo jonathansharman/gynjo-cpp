@@ -10,59 +10,71 @@
 #include "parser.hpp"
 #include "visitation.hpp"
 
+#include <fmt/format.h>
+
 #include <cmath>
 
 namespace gynjo {
 	namespace {
-		auto eval(ast::ptr const& ast) -> eval_result;
+		auto eval(environment& env, ast::ptr const& ast) -> eval_result;
 
 		template <typename F>
-		auto eval_binary(ast::ptr const& a, ast::ptr const& b, F&& f) -> eval_result {
-			return eval(a) //
+		auto eval_binary(environment& env, ast::ptr const& a, ast::ptr const& b, F&& f) -> eval_result {
+			return eval(env, a) //
 				.and_then([&](double a) { //
-					return eval(b) //
+					return eval(env, b) //
 						.and_then([&](double b) { //
 							return std::forward<F>(f)(a, b);
 						});
 				});
 		}
 
-		auto eval(ast::ptr const& ast) -> eval_result {
+		auto eval(environment& env, ast::ptr const& ast) -> eval_result {
 			using namespace std::string_literals;
 			return match(
 				*ast,
-				[](ast::add const& add) {
-					return eval_binary(add.a, add.b, [](double a, double b) -> eval_result { return a + b; });
+				[&](ast::assign const& assign) {
+					return eval(env, assign.rhs).and_then([&](double expr_value) -> eval_result {
+						env[assign.symbol.name] = expr_value;
+						return expr_value;
+					});
 				},
-				[](ast::sub const& sub) {
-					return eval_binary(sub.a, sub.b, [](double a, double b) -> eval_result { return a - b; });
+				[&](ast::add const& add) {
+					return eval_binary(env, add.a, add.b, [](double a, double b) -> eval_result { return a + b; });
 				},
-				[](ast::mul const& mul) {
-					return eval_binary(mul.a, mul.b, [](double a, double b) -> eval_result { return a * b; });
+				[&](ast::sub const& sub) {
+					return eval_binary(env, sub.a, sub.b, [](double a, double b) -> eval_result { return a - b; });
 				},
-				[](ast::div const& div) {
-					return eval_binary(div.a, div.b, [](double a, double b) -> eval_result {
+				[&](ast::mul const& mul) {
+					return eval_binary(env, mul.a, mul.b, [](double a, double b) -> eval_result { return a * b; });
+				},
+				[&](ast::div const& div) {
+					return eval_binary(env, div.a, div.b, [](double a, double b) -> eval_result {
 						if (b == 0.0) return tl::unexpected{"division by zero"s};
 						return a / b;
 					});
 				},
-				[](ast::exp const& exp) {
-					return eval_binary(exp.a, exp.b, [](double a, double b) -> eval_result { return std::pow(a, b); });
+				[&](ast::exp const& exp) {
+					return eval_binary(
+						env, exp.a, exp.b, [](double a, double b) -> eval_result { return std::pow(a, b); });
 				},
 				[](ast::num const& num) -> eval_result { return num.value; },
-				[](ast::sym const& sym) -> eval_result {
-					(void)sym;
-					return 0.0;
+				[&](tok::sym const& sym) -> eval_result {
+					if (auto it = env.find(sym.name); it != env.end()) {
+						return it->second;
+					} else {
+						return tl::unexpected{fmt::format("'{}' is not defined", sym.name)};
+					}
 				});
 		}
 	}
 
-	auto eval(std::string const& input) -> eval_result {
+	auto eval(environment& env, std::string const& input) -> eval_result {
 		lex_result const lex_result = lex(input);
 		if (lex_result.has_value()) {
 			parse_result const parse_result = parse(lex_result.value());
 			if (parse_result.has_value()) {
-				return eval(parse_result.value());
+				return eval(env, parse_result.value());
 			} else {
 				return tl::unexpected{"Parse error: " + parse_result.error()};
 			}
@@ -80,10 +92,19 @@ namespace gynjo {
 TEST_CASE("interpreter") {
 	using namespace gynjo;
 
-	double const expected = 15.0;
+	environment env{};
 
-	auto const actual = eval("5 * (1 +  2)");
+	SUBCASE("simple") {
+		double const expected = 15.0;
+		auto const actual = eval(env, "5 * (1 +  2)");
+		CHECK(actual.has_value());
+		CHECK(expected == doctest::Approx(actual.value()));
+	}
 
-	CHECK(actual.has_value());
-	CHECK(expected == doctest::Approx(actual.value()));
+	SUBCASE("assignment persists") {
+		double const expected = 42.0;
+		auto const actual = eval(env, "x = 42");
+		CHECK(actual.has_value());
+		CHECK(expected == doctest::Approx(actual.value()));
+	}
 }

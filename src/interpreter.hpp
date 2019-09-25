@@ -8,9 +8,11 @@
 #include <tl/expected.hpp>
 
 #include <string>
+#include <unordered_map>
 
 namespace gynjo {
 	using eval_result = tl::expected<double, std::string>;
+	using environment = std::unordered_map<std::string, double>;
 
-	auto eval(std::string const& input) -> eval_result;
+	auto eval(environment& env, std::string const& input) -> eval_result;
 }

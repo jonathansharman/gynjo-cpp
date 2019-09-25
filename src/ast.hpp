@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "tokens.hpp"
 #include "visitation.hpp"
 
 #include <memory>
@@ -10,9 +11,13 @@
 #include <variant>
 
 namespace gynjo::ast {
-	using val = std::variant<struct add, struct sub, struct mul, struct div, struct exp, struct num, struct sym>;
+	using val = std::variant<struct assign, struct add, struct sub, struct mul, struct div, struct exp, struct num, tok::sym>;
 	using ptr = std::unique_ptr<val>;
 
+	struct assign {
+		tok::sym symbol;
+		ptr rhs;
+	};
 	struct add {
 		ptr a;
 		ptr b;
@@ -36,9 +41,6 @@ namespace gynjo::ast {
 	struct num {
 		double value;
 	};
-	struct sym {
-		std::string name;
-	};
 
 	template <typename T>
 	auto make_ast(T&& val) {
@@ -48,12 +50,13 @@ namespace gynjo::ast {
 	inline auto to_string(ptr const& ast) -> std::string {
 		return match(
 			*ast,
+			[](assign const& assign) { return "(" + to_string(assign.symbol) + " = " + to_string(assign.rhs) + ")"; },
 			[](add const& add) { return "(" + to_string(add.a) + " + " + to_string(add.b) + ")"; },
 			[](sub const& sub) { return "(" + to_string(sub.a) + " - " + to_string(sub.b) + ")"; },
 			[](mul const& mul) { return "(" + to_string(mul.a) + " * " + to_string(mul.b) + ")"; },
 			[](div const& div) { return "(" + to_string(div.a) + " / " + to_string(div.b) + ")"; },
 			[](exp const& exp) { return "(" + to_string(exp.a) + " ^ " + to_string(exp.b) + ")"; },
 			[](num const& num) { return std::to_string(num.value); },
-			[](sym const& sym) { return sym.name; });
+			[](tok::sym const& sym) { return sym.name; });
 	}
 }

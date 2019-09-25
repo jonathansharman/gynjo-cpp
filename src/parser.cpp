@@ -14,14 +14,15 @@ namespace gynjo {
 		using token_it = std::vector<tok::token>::const_iterator;
 		using subparse_result = tl::expected<std::pair<token_it, ast::ptr>, std::string>;
 
-		auto parse_expr(token_it begin, token_it end) -> subparse_result;
+		auto parse_terms(token_it begin, token_it end) -> subparse_result;
 
 		auto parse_atom(token_it begin, token_it end) -> subparse_result {
 			if (begin == end) { return tl::unexpected{"expected expression"s}; }
 			return match(
 				*begin,
+				// Parenthetical expression
 				[&](tok::lft const&) -> subparse_result {
-					auto expr_result = parse_expr(begin + 1, end);
+					auto expr_result = parse_terms(begin + 1, end);
 					if (expr_result.has_value()) {
 						auto [expr_end, expr] = std::move(expr_result.value());
 						if (expr_end == end || !std::holds_alternative<tok::rht>(*expr_end)) {
@@ -33,12 +34,15 @@ namespace gynjo {
 						return expr_result;
 					}
 				},
+				// Number
 				[&](tok::num const& num) -> subparse_result {
 					return std::pair{begin + 1, make_ast(ast::num{num.value})};
 				},
+				// Symbol
 				[&](tok::sym const& sym) -> subparse_result {
-					return std::pair{begin + 1, make_ast(ast::sym{sym.name})};
+					return std::pair{begin + 1, make_ast(ast::val{sym})};
 				},
+				// Anything else is unexpected.
 				[](auto const& t) -> subparse_result {
 					return tl::unexpected{"unexpected token in expression: " + to_string(t)};
 				});
@@ -87,12 +91,12 @@ namespace gynjo {
 		auto parse_terms(token_it begin, token_it end) -> subparse_result {
 			return parse_factors(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 				auto [it, terms] = std::move(result);
-				while (it != end && (std::holds_alternative<tok::add>(*it) || std::holds_alternative<tok::sub>(*it))) {
+				while (it != end && (std::holds_alternative<tok::plus>(*it) || std::holds_alternative<tok::sub>(*it))) {
 					auto const token = *it;
 					auto next_result = parse_factors(it + 1, end);
 					if (next_result.has_value()) {
 						auto [next_end, next_term] = std::move(next_result.value());
-						if (std::holds_alternative<tok::add>(token)) {
+						if (std::holds_alternative<tok::plus>(token)) {
 							terms = ast::make_ast(ast::add{std::move(terms), std::move(next_term)});
 						} else {
 							terms = ast::make_ast(ast::sub{std::move(terms), std::move(next_term)});
@@ -106,12 +110,41 @@ namespace gynjo {
 			});
 		}
 
-		auto parse_expr(token_it begin, token_it end) -> subparse_result {
-			return parse_terms(begin, end);
+		auto parse_assignment(token_it begin, token_it end) -> subparse_result {
+			if (begin == end) { return tl::unexpected{"expected assignment"s}; }
+			return match(
+				*begin,
+				// Symbol to assign to
+				[&](tok::sym symbol) -> subparse_result {
+					auto eq_begin = begin + 1;
+					if (eq_begin != end && std::holds_alternative<tok::eq>(*(eq_begin))) {
+						// Get RHS.
+						return parse_terms(eq_begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> rhs_result) -> subparse_result {
+							// Assemble assignment from symbol and RHS.
+							auto [rhs_end, rhs] = std::move(rhs_result);
+							return std::pair{rhs_end, make_ast(ast::assign{symbol, std::move(rhs)})};
+						});
+					} else {
+						return tl::unexpected{"expected '='"s};
+					}
+				},
+				// Otherwise, not a valid assignment
+				[](auto const&) -> subparse_result { return tl::unexpected{"expected symbol"s}; });
+		}
+
+		auto parse_statement(token_it begin, token_it end) -> subparse_result {
+			// Assignment
+			auto assignment_result = parse_assignment(begin, end);
+			if (assignment_result.has_value()) { return assignment_result; }
+			// Expression
+			auto expression_result = parse_terms(begin, end);
+			if (expression_result.has_value()) { return expression_result; }
+			// Unrecognized statement
+			return tl::unexpected{"expected assignment or expression"s};
 		}
 
 		auto parse(token_it begin, token_it end) -> parse_result {
-			auto result = parse_expr(begin, end);
+			auto result = parse_statement(begin, end);
 			if (result.has_value()) {
 				auto [expr_end, expr] = std::move(result.value());
 				log("parsed {}\n", to_string(expr));
@@ -140,14 +173,16 @@ TEST_CASE("parser") {
 	using namespace gynjo;
 
 	auto const expected = //
-		make_ast(ast::mul{//
-			make_ast(ast::num{5}),
-			make_ast(ast::add{//
-				make_ast(ast::num{1}),
-				make_ast(ast::num{2})})});
+		make_ast(ast::assign{//
+			tok::sym{"x"},
+			make_ast(ast::mul{//
+				make_ast(ast::num{5}),
+				make_ast(ast::add{//
+					make_ast(ast::num{1}),
+					make_ast(ast::num{2})})})});
 
-	auto const actual = parse(
-		std::vector<tok::token>{tok::num{5}, tok::mul{}, tok::lft{}, tok::num{1}, tok::add{}, tok::num{2}, tok::rht{}});
+	auto const actual = parse(std::vector<tok::token>{
+		tok::sym{"x"}, tok::eq{}, tok::num{5}, tok::mul{}, tok::lft{}, tok::num{1}, tok::plus{}, tok::num{2}, tok::rht{}});
 
 	CHECK(actual.has_value());
 	CHECK(to_string(expected) == to_string(actual.value()));
