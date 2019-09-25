@@ -20,16 +20,6 @@ namespace gynjo {
 			if (begin == end) { return tl::unexpected{"expected expression"s}; }
 			return match(
 				*begin,
-				// Negation
-				[&](tok::minus const&) -> subparse_result {
-					auto expr_result = parse_terms(begin + 1, end);
-					if (expr_result.has_value()) {
-						auto [expr_end, expr] = std::move(expr_result.value());
-						return std::pair{expr_end, make_ast(ast::neg{std::move(expr)})};
-					} else {
-						return expr_result;
-					}
-				},
 				// Parenthetical expression
 				[&](tok::lft const&) -> subparse_result {
 					auto expr_result = parse_terms(begin + 1, end);
@@ -69,7 +59,7 @@ namespace gynjo {
 						exponentials = ast::make_ast(ast::exp{std::move(exponentials), std::move(next_exponential)});
 						it = next_end;
 					} else {
-						return tl::unexpected{"expected expression"s};
+						return tl::unexpected{"expected power"s};
 					}
 				}
 				return std::pair{it, std::move(exponentials)};
@@ -79,31 +69,69 @@ namespace gynjo {
 		auto parse_factors(token_it begin, token_it end) -> subparse_result {
 			return parse_exponentials(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 				auto [it, factors] = std::move(result);
-				while (it != end && (std::holds_alternative<tok::mul>(*it) || std::holds_alternative<tok::div>(*it))) {
-					auto const token = *it;
-					auto next_result = parse_exponentials(it + 1, end);
-					if (next_result.has_value()) {
-						auto [next_end, next_factor] = std::move(next_result.value());
-						if (std::holds_alternative<tok::mul>(token)) {
-							factors = ast::make_ast(ast::mul{std::move(factors), std::move(next_factor)});
+				while (it != end) {
+					// The following match determines three things:
+					//   1) The iterator offset to the start of the next factor
+					//   2) Whether the next factor is required or optional
+					//   3) Whether to multiply or divide by the next factor
+					auto [it_offset, required, multiply] = match(
+						*it,
+						[](tok::mul) {
+							return std::tuple{1, true, true};
+						},
+						[](tok::div) {
+							return std::tuple{1, true, false};
+						},
+						[](auto const&) {
+							return std::tuple{0, false, true};
+						});
+					// Try to read a factor.
+					auto next_result = parse_exponentials(it + it_offset, end);
+					if (!next_result.has_value()) {
+						if (required) {
+							// Saw an explicit operator but did not find another factor.
+							return tl::unexpected{"expected factor"s};
 						} else {
-							factors = ast::make_ast(ast::div{std::move(factors), std::move(next_factor)});
+							// This factor was optional. Just stop reading factors now.
+							break;
 						}
-						it = next_end;
-					} else {
-						return tl::unexpected{"expected exponential"s};
 					}
+					// Got another factor.
+					auto [next_end, next_factor] = std::move(next_result.value());
+					if (multiply) {
+						factors = ast::make_ast(ast::mul{std::move(factors), std::move(next_factor)});
+					} else {
+						factors = ast::make_ast(ast::div{std::move(factors), std::move(next_factor)});
+					}
+					it = next_end;
 				}
 				return std::pair{it, std::move(factors)};
 			});
 		}
 
+		auto parse_signed_term(token_it begin, token_it end) -> subparse_result {
+			if (begin == end) { return tl::unexpected{"expected (signed) term"s}; }
+			return match(
+				*begin,
+				// Unary minus
+				[&](tok::minus) {
+					return parse_factors(begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+						auto [factor_end, factor] = std::move(result);
+						return std::pair{factor_end, make_ast(ast::neg{std::move(factor)})};
+					});
+				},
+				// Unary plus
+				[&](tok::plus) { return parse_factors(begin + 1, end); },
+				// Unsigned
+				[&](auto const&) { return parse_factors(begin, end); });
+		}
+
 		auto parse_terms(token_it begin, token_it end) -> subparse_result {
-			return parse_factors(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+			return parse_signed_term(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 				auto [it, terms] = std::move(result);
 				while (it != end && (std::holds_alternative<tok::plus>(*it) || std::holds_alternative<tok::minus>(*it))) {
 					auto const token = *it;
-					auto next_result = parse_factors(it + 1, end);
+					auto next_result = parse_signed_term(it + 1, end);
 					if (next_result.has_value()) {
 						auto [next_end, next_term] = std::move(next_result.value());
 						if (std::holds_alternative<tok::plus>(token)) {
@@ -113,7 +141,7 @@ namespace gynjo {
 						}
 						it = next_end;
 					} else {
-						return tl::unexpected{"expected factor"s};
+						return tl::unexpected{"expected term"s};
 					}
 				}
 				return std::pair{it, std::move(terms)};
