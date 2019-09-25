@@ -83,28 +83,3 @@ namespace gynjo {
 		}
 	}
 }
-
-#ifndef _DEBUG
-#define DOCTEST_CONFIG_DISABLE
-#endif
-#include <doctest/doctest.h>
-
-TEST_CASE("interpreter") {
-	using namespace gynjo;
-
-	environment env{};
-
-	SUBCASE("simple") {
-		double const expected = 15.0;
-		auto const actual = eval(env, "5 * (1 +  2)");
-		CHECK(actual.has_value());
-		CHECK(expected == doctest::Approx(actual.value()));
-	}
-
-	SUBCASE("assignment persists") {
-		double const expected = 42.0;
-		auto const actual = eval(env, "x = 42");
-		CHECK(actual.has_value());
-		CHECK(expected == doctest::Approx(actual.value()));
-	}
-}

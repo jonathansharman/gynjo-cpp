@@ -59,35 +59,3 @@ namespace gynjo {
 		return result;
 	}
 }
-
-#ifndef _DEBUG
-#define DOCTEST_CONFIG_DISABLE
-#endif
-#include <doctest/doctest.h>
-
-TEST_CASE("lexer") {
-	using namespace gynjo;
-
-	auto const expected = std::vector<tok::token>{//
-		tok::num{5},
-		tok::mul{},
-		tok::lft{},
-		tok::num{1},
-		tok::plus{},
-		tok::sub{},
-		tok::num{2},
-		tok::rht{},
-		tok::exp{},
-		tok::exp{},
-		tok::mul{},
-		tok::eq{},
-		tok::div{},
-		tok::num{.1},
-		tok::num{0},
-		tok::num{0.1}};
-
-	auto const actual = lex("5*( 1+	-2)^***  =/ .1 0 0.1");
-
-	CHECK(actual.has_value());
-	CHECK(expected == actual.value());
-}

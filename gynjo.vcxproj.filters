@@ -4,6 +4,9 @@
     <Filter Include="src">
       <UniqueIdentifier>{7fd9c408-3116-40ae-aa31-81463f90b4ad}</UniqueIdentifier>
     </Filter>
+    <Filter Include="test">
+      <UniqueIdentifier>{e6a2fc2e-9ca1-48bb-9121-889048712901}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -17,6 +20,15 @@
     </ClCompile>
     <ClCompile Include="src\interpreter.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="test\lexer.cpp">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\parser.cpp">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\interpreter.cpp">
+      <Filter>test</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -163,27 +163,3 @@ namespace gynjo {
 		return parse(tokens.begin(), tokens.end());
 	}
 }
-
-#ifndef _DEBUG
-#define DOCTEST_CONFIG_DISABLE
-#endif
-#include <doctest/doctest.h>
-
-TEST_CASE("parser") {
-	using namespace gynjo;
-
-	auto const expected = //
-		make_ast(ast::assign{//
-			tok::sym{"x"},
-			make_ast(ast::mul{//
-				make_ast(ast::num{5}),
-				make_ast(ast::add{//
-					make_ast(ast::num{1}),
-					make_ast(ast::num{2})})})});
-
-	auto const actual = parse(std::vector<tok::token>{
-		tok::sym{"x"}, tok::eq{}, tok::num{5}, tok::mul{}, tok::lft{}, tok::num{1}, tok::plus{}, tok::num{2}, tok::rht{}});
-
-	CHECK(actual.has_value());
-	CHECK(to_string(expected) == to_string(actual.value()));
-}
