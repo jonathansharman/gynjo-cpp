@@ -20,6 +20,16 @@ namespace gynjo {
 			if (begin == end) { return tl::unexpected{"expected expression"s}; }
 			return match(
 				*begin,
+				// Negation
+				[&](tok::minus const&) -> subparse_result {
+					auto expr_result = parse_terms(begin + 1, end);
+					if (expr_result.has_value()) {
+						auto [expr_end, expr] = std::move(expr_result.value());
+						return std::pair{expr_end, make_ast(ast::neg{std::move(expr)})};
+					} else {
+						return expr_result;
+					}
+				},
 				// Parenthetical expression
 				[&](tok::lft const&) -> subparse_result {
 					auto expr_result = parse_terms(begin + 1, end);
@@ -91,7 +101,7 @@ namespace gynjo {
 		auto parse_terms(token_it begin, token_it end) -> subparse_result {
 			return parse_factors(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 				auto [it, terms] = std::move(result);
-				while (it != end && (std::holds_alternative<tok::plus>(*it) || std::holds_alternative<tok::sub>(*it))) {
+				while (it != end && (std::holds_alternative<tok::plus>(*it) || std::holds_alternative<tok::minus>(*it))) {
 					auto const token = *it;
 					auto next_result = parse_factors(it + 1, end);
 					if (next_result.has_value()) {

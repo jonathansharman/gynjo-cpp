@@ -19,6 +19,11 @@ namespace gynjo {
 		auto eval(environment& env, ast::ptr const& ast) -> eval_result;
 
 		template <typename F>
+		auto eval_unary(environment& env, ast::ptr const& expr, F&& f) -> eval_result {
+			return eval(env, expr).and_then([&](double value) { return std::forward<F>(f)(value); });
+		}
+
+		template <typename F>
 		auto eval_binary(environment& env, ast::ptr const& a, ast::ptr const& b, F&& f) -> eval_result {
 			return eval(env, a) //
 				.and_then([&](double a) { //
@@ -41,6 +46,9 @@ namespace gynjo {
 				},
 				[&](ast::add const& add) {
 					return eval_binary(env, add.a, add.b, [](double a, double b) -> eval_result { return a + b; });
+				},
+				[&](ast::neg const& neg) {
+					return eval_unary(env, neg.expr, [](double value) -> eval_result { return -value; });
 				},
 				[&](ast::sub const& sub) {
 					return eval_binary(env, sub.a, sub.b, [](double a, double b) -> eval_result { return a - b; });

@@ -11,7 +11,8 @@
 #include <variant>
 
 namespace gynjo::ast {
-	using val = std::variant<struct assign, struct add, struct sub, struct mul, struct div, struct exp, struct num, tok::sym>;
+	using val =
+		std::variant<struct assign, struct add, struct neg, struct sub, struct mul, struct div, struct exp, struct num, tok::sym>;
 	using ptr = std::unique_ptr<val>;
 
 	struct assign {
@@ -21,6 +22,9 @@ namespace gynjo::ast {
 	struct add {
 		ptr a;
 		ptr b;
+	};
+	struct neg {
+		ptr expr;
 	};
 	struct sub {
 		ptr a;
@@ -52,6 +56,7 @@ namespace gynjo::ast {
 			*ast,
 			[](assign const& assign) { return "(" + to_string(assign.symbol) + " = " + to_string(assign.rhs) + ")"; },
 			[](add const& add) { return "(" + to_string(add.a) + " + " + to_string(add.b) + ")"; },
+			[](neg const& neg) { return "(-" + to_string(neg.expr) + ")"; },
 			[](sub const& sub) { return "(" + to_string(sub.a) + " - " + to_string(sub.b) + ")"; },
 			[](mul const& mul) { return "(" + to_string(mul.a) + " * " + to_string(mul.b) + ")"; },
 			[](div const& div) { return "(" + to_string(div.a) + " / " + to_string(div.b) + ")"; },

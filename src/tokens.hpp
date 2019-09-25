@@ -16,8 +16,8 @@ namespace gynjo::tok {
 	struct plus {
 		auto operator<=>(plus const&) const = default;
 	};
-	struct sub {
-		auto operator<=>(sub const&) const = default;
+	struct minus {
+		auto operator<=>(minus const&) const = default;
 	};
 	struct mul {
 		auto operator<=>(mul const&) const = default;
@@ -43,7 +43,7 @@ namespace gynjo::tok {
 		auto operator<=>(sym const&) const = default;
 	};
 
-	using token = std::variant<eq, plus, sub, mul, div, exp, lft, rht, num, sym>;
+	using token = std::variant<eq, plus, minus, mul, div, exp, lft, rht, num, sym>;
 
 	inline auto to_string(token token) -> std::string {
 		using namespace std::string_literals;
@@ -51,7 +51,7 @@ namespace gynjo::tok {
 			token,
 			[&](eq const&) { return "="s; },
 			[&](plus const&) { return "+"s; },
-			[&](sub const&) { return "-"s; },
+			[&](minus const&) { return "-"s; },
 			[&](mul const&) { return "*"s; },
 			[&](div const&) { return "/"s; },
 			[&](exp const&) { return "^"s; },
