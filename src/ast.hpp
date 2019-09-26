@@ -57,7 +57,7 @@ namespace gynjo::ast {
 			[](mul const& mul) { return "(" + to_string(mul.a) + " * " + to_string(mul.b) + ")"; },
 			[](div const& div) { return "(" + to_string(div.a) + " / " + to_string(div.b) + ")"; },
 			[](exp const& exp) { return "(" + to_string(exp.a) + " ^ " + to_string(exp.b) + ")"; },
-			[](tok::num const& num) { return std::to_string(num.value); },
+			[](tok::num const& num) { return num.rep; },
 			[](tok::sym const& sym) { return sym.name; });
 	}
 }

@@ -35,7 +35,7 @@ namespace gynjo::tok {
 		auto operator<=>(rht const&) const = default;
 	};
 	struct num {
-		double value;
+		std::string rep;
 		auto operator<=>(num const&) const = default;
 	};
 	struct sym {
@@ -57,7 +57,7 @@ namespace gynjo::tok {
 			[&](exp const&) { return "^"s; },
 			[&](lft const&) { return "("s; },
 			[&](rht const&) { return ")"s; },
-			[&](num const& n) { return std::to_string(n.value); },
+			[&](num const& n) { return n.rep; },
 			[&](sym const& s) { return s.name; });
 	}
 }

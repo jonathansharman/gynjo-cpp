@@ -12,8 +12,8 @@
 #include <unordered_map>
 
 namespace gynjo {
-	using eval_result = tl::expected<value::val, std::string>;
-	using environment = std::unordered_map<std::string, value::val>;
+	using eval_result = tl::expected<val::val, std::string>;
+	using environment = std::unordered_map<std::string, val::val>;
 
 	auto eval(environment& env, std::string const& input) -> eval_result;
 }

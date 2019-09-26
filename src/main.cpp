@@ -34,7 +34,7 @@ auto main(int argc, char* argv[]) -> int {
 		std::getline(std::cin, line);
 		if (line == "exit" || line == "quit") break;
 		auto const eval_result = gynjo::eval(env, line);
-		std::cout << (eval_result.has_value() ? gynjo::value::to_string(eval_result.value()) : eval_result.error()) << '\n';
+		std::cout << (eval_result.has_value() ? gynjo::val::to_string(eval_result.value()) : eval_result.error()) << '\n';
 	}
 
 	return main_result;
