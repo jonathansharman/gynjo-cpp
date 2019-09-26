@@ -8,11 +8,10 @@
 
 #include <memory>
 #include <string>
-#include <variant>
 
 namespace gynjo::ast {
 	using val =
-		std::variant<struct assign, struct add, struct neg, struct sub, struct mul, struct div, struct exp, struct num, tok::sym>;
+		std::variant<struct assign, struct add, struct neg, struct sub, struct mul, struct div, struct exp, tok::num, tok::sym>;
 	using ptr = std::unique_ptr<val>;
 
 	struct assign {
@@ -42,9 +41,6 @@ namespace gynjo::ast {
 		ptr a;
 		ptr b;
 	};
-	struct num {
-		double value;
-	};
 
 	template <typename T>
 	auto make_ast(T&& val) {
@@ -61,7 +57,7 @@ namespace gynjo::ast {
 			[](mul const& mul) { return "(" + to_string(mul.a) + " * " + to_string(mul.b) + ")"; },
 			[](div const& div) { return "(" + to_string(div.a) + " / " + to_string(div.b) + ")"; },
 			[](exp const& exp) { return "(" + to_string(exp.a) + " ^ " + to_string(exp.b) + ")"; },
-			[](num const& num) { return std::to_string(num.value); },
+			[](tok::num const& num) { return std::to_string(num.value); },
 			[](tok::sym const& sym) { return sym.name; });
 	}
 }

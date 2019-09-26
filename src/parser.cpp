@@ -36,7 +36,7 @@ namespace gynjo {
 				},
 				// Number
 				[&](tok::num const& num) -> subparse_result {
-					return std::pair{begin + 1, make_ast(ast::num{num.value})};
+					return std::pair{begin + 1, make_ast(ast::val{num})};
 				},
 				// Symbol
 				[&](tok::sym const& sym) -> subparse_result {

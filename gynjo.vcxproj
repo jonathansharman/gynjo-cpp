@@ -152,6 +152,7 @@
     <ClInclude Include="src\logger.hpp" />
     <ClInclude Include="src\parser.hpp" />
     <ClInclude Include="src\tokens.hpp" />
+    <ClInclude Include="src\values.hpp" />
     <ClInclude Include="src\visitation.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
