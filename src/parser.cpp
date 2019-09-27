@@ -31,8 +31,8 @@ namespace gynjo {
 					if (first_result.has_value()) {
 						auto [first_end, first] = std::move(first_result.value());
 						it = first_end;
-						tuple.elems.push_back(std::move(first));
 						// Try to parse additional comma-delimited expressions.
+						tuple.elems.push_back(std::move(first));
 						while (it != end && std::holds_alternative<tok::com>(*it)) {
 							++it;
 							auto next_result = parse_terms(env, it, end);
@@ -49,7 +49,10 @@ namespace gynjo {
 					if (it == end || !std::holds_alternative<tok::rht>(*it)) {
 						return tl::unexpected{"expected ')'"s};
 					} else {
-						return std::pair{it + 1, make_ast(std::move(tuple))};
+						// Collapse singletons back into their contained values. This allows use of parentheses for
+						// value grouping without having to special-case interpretation when an argument is a singleton.
+						return std::pair{it + 1,
+							tuple.elems.size() == 1 ? std::move(tuple.elems.front()) : make_ast(std::move(tuple))};
 					}
 				},
 				// Number

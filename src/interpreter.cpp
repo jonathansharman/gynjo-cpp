@@ -172,11 +172,6 @@ namespace gynjo {
 				});
 			},
 			[&](ast::tup const& tup_ast) -> eval_result {
-				if (tup_ast.elems.size() == 1) {
-					// Collapse a singleton into its contained value. This allows use of parentheses for value grouping
-					// without having to special-case the other evaluators when the arguments are singletons.
-					return eval(env, tup_ast.elems.front());
-				}
 				val::tup tup_val;
 				for (auto const& elem_ast : tup_ast.elems) {
 					auto elem_result = eval(env, elem_ast);
