@@ -60,19 +60,15 @@ namespace gynjo {
 		auto parse_application(environment& env, token_it begin, token_it end) -> subparse_result {
 			return parse_value(env, begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 				auto [it, app] = std::move(result);
-				// Ensure the first parsed value is a function.
-				if (!evaluates_to_function(env, app)) { return tl::unexpected{"expected function call"s}; }
-				// Parse function arguments until the result of the application is not a function.
-				do {
-					auto arg_result = parse_value(env, it, end);
-					if (arg_result.has_value()) {
-						auto [arg_end, arg] = std::move(arg_result.value());
-						it = arg_end;
-						app = make_ast(ast::app{std::move(app), std::move(arg)});
-					} else {
-						return tl::unexpected{"missing function arguments"s};
-					}
-				} while (evaluates_to_function(env, app));
+				// Read arguments and chain function applications as long as possible.
+				auto arg_result = parse_value(env, it, end);
+				while (arg_result.has_value() && evaluates_to_function(env, app)) {
+					auto [arg_end, arg] = std::move(arg_result.value());
+					it = arg_end;
+					app = make_ast(ast::app{std::move(app), std::move(arg)});
+					arg_result = parse_value(env, it, end);
+				}
+				// Return resulting expression once applications can no longer be chained.
 				return std::pair{it, std::move(app)};
 			});
 		}
