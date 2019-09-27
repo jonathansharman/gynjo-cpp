@@ -3,6 +3,7 @@
 
 #include "parser.hpp"
 
+#include "interpreter.hpp" // Used to distinguish between products and function applications.
 #include "lexer.hpp"
 #include "logger.hpp"
 #include "visitation.hpp"
@@ -14,15 +15,16 @@ namespace gynjo {
 		using token_it = std::vector<tok::token>::const_iterator;
 		using subparse_result = tl::expected<std::pair<token_it, ast::ptr>, std::string>;
 
-		auto parse_terms(token_it begin, token_it end) -> subparse_result;
+		auto parse_terms(environment& env, token_it begin, token_it end) -> subparse_result;
 
-		auto parse_atom(token_it begin, token_it end) -> subparse_result {
+		//! Parses a Gynjo value.
+		auto parse_value(environment& env, token_it begin, token_it end) -> subparse_result {
 			if (begin == end) { return tl::unexpected{"expected expression"s}; }
 			return match(
 				*begin,
 				// Parenthetical expression
 				[&](tok::lft const&) -> subparse_result {
-					auto expr_result = parse_terms(begin + 1, end);
+					auto expr_result = parse_terms(env, begin + 1, end);
 					if (expr_result.has_value()) {
 						auto [expr_end, expr] = std::move(expr_result.value());
 						if (expr_end == end || !std::holds_alternative<tok::rht>(*expr_end)) {
@@ -48,12 +50,40 @@ namespace gynjo {
 				});
 		}
 
-		auto parse_exponentials(token_it begin, token_it end) -> subparse_result {
-			return parse_atom(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+		//! Evaluates @p ast and checks whether the result is a function.
+		auto evaluates_to_function(environment& env, ast::ptr const& ast) {
+			auto result = eval(env, ast);
+			return result.has_value() && match(result.value(), [](auto const&) { return false; });
+		}
+
+		//! Parses a function application.
+		auto parse_application(environment& env, token_it begin, token_it end) -> subparse_result {
+			return parse_value(env, begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+				auto [it, app] = std::move(result);
+				// Ensure the first parsed value is a function.
+				if (!evaluates_to_function(env, app)) { return tl::unexpected{"expected function call"s}; }
+				// Parse function arguments until the result of the application is not a function.
+				do {
+					auto arg_result = parse_value(env, it, end);
+					if (arg_result.has_value()) {
+						auto [arg_end, arg] = std::move(arg_result.value());
+						it = arg_end;
+						app = make_ast(ast::app{std::move(app), std::move(arg)});
+					} else {
+						return tl::unexpected{"missing function arguments"s};
+					}
+				} while (evaluates_to_function(env, app));
+				return std::pair{it, std::move(app)};
+			});
+		}
+
+		//! Parses a series of exponential operations.
+		auto parse_exponentials(environment& env, token_it begin, token_it end) -> subparse_result {
+			return parse_application(env, begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 				auto [it, exponentials] = std::move(result);
 				while (it != end && std::holds_alternative<tok::exp>(*it)) {
 					auto const token = *it;
-					auto next_result = parse_atom(it + 1, end);
+					auto next_result = parse_application(env, it + 1, end);
 					if (next_result.has_value()) {
 						auto [next_end, next_exponential] = std::move(next_result.value());
 						exponentials = ast::make_ast(ast::exp{std::move(exponentials), std::move(next_exponential)});
@@ -66,8 +96,9 @@ namespace gynjo {
 			});
 		}
 
-		auto parse_factors(token_it begin, token_it end) -> subparse_result {
-			return parse_exponentials(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+		//! Parses a series of multiplications (implicit or explicit) and divisions.
+		auto parse_factors(environment& env, token_it begin, token_it end) -> subparse_result {
+			return parse_exponentials(env, begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 				auto [it, factors] = std::move(result);
 				while (it != end) {
 					// The following match determines three things:
@@ -86,7 +117,7 @@ namespace gynjo {
 							return std::tuple{0, false, true};
 						});
 					// Try to read a factor.
-					auto next_result = parse_exponentials(it + it_offset, end);
+					auto next_result = parse_exponentials(env, it + it_offset, end);
 					if (!next_result.has_value()) {
 						if (required) {
 							// Saw an explicit operator but did not find another factor.
@@ -98,48 +129,50 @@ namespace gynjo {
 					}
 					// Got another factor.
 					auto [next_end, next_factor] = std::move(next_result.value());
+					it = next_end;
 					if (multiply) {
 						factors = ast::make_ast(ast::mul{std::move(factors), std::move(next_factor)});
 					} else {
 						factors = ast::make_ast(ast::div{std::move(factors), std::move(next_factor)});
 					}
-					it = next_end;
 				}
 				return std::pair{it, std::move(factors)};
 			});
 		}
 
-		auto parse_signed_term(token_it begin, token_it end) -> subparse_result {
+		//! Parses a term along with its leading unary plus or minus, if any.
+		auto parse_signed_term(environment& env, token_it begin, token_it end) -> subparse_result {
 			if (begin == end) { return tl::unexpected{"expected (signed) term"s}; }
 			return match(
 				*begin,
 				// Unary minus
 				[&](tok::minus) {
-					return parse_factors(begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+					return parse_factors(env, begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 						auto [factor_end, factor] = std::move(result);
 						return std::pair{factor_end, make_ast(ast::neg{std::move(factor)})};
 					});
 				},
-				// Unary plus
-				[&](tok::plus) { return parse_factors(begin + 1, end); },
+				// Unary plus (ignored)
+				[&](tok::plus) { return parse_factors(env, begin + 1, end); },
 				// Unsigned
-				[&](auto const&) { return parse_factors(begin, end); });
+				[&](auto const&) { return parse_factors(env, begin, end); });
 		}
 
-		auto parse_terms(token_it begin, token_it end) -> subparse_result {
-			return parse_signed_term(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+		//! Parses a series of additions and subtractions.
+		auto parse_terms(environment& env, token_it begin, token_it end) -> subparse_result {
+			return parse_signed_term(env, begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 				auto [it, terms] = std::move(result);
 				while (it != end && (std::holds_alternative<tok::plus>(*it) || std::holds_alternative<tok::minus>(*it))) {
 					auto const token = *it;
-					auto next_result = parse_signed_term(it + 1, end);
+					auto next_result = parse_signed_term(env, it + 1, end);
 					if (next_result.has_value()) {
 						auto [next_end, next_term] = std::move(next_result.value());
+						it = next_end;
 						if (std::holds_alternative<tok::plus>(token)) {
 							terms = ast::make_ast(ast::add{std::move(terms), std::move(next_term)});
 						} else {
 							terms = ast::make_ast(ast::sub{std::move(terms), std::move(next_term)});
 						}
-						it = next_end;
 					} else {
 						return tl::unexpected{"expected term"s};
 					}
@@ -148,7 +181,8 @@ namespace gynjo {
 			});
 		}
 
-		auto parse_assignment(token_it begin, token_it end) -> subparse_result {
+		//! Parses an assignment.
+		auto parse_assignment(environment& env, token_it begin, token_it end) -> subparse_result {
 			if (begin == end) { return tl::unexpected{"expected assignment"s}; }
 			return match(
 				*begin,
@@ -157,7 +191,7 @@ namespace gynjo {
 					auto eq_begin = begin + 1;
 					if (eq_begin != end && std::holds_alternative<tok::eq>(*(eq_begin))) {
 						// Get RHS.
-						return parse_terms(eq_begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> rhs_result) -> subparse_result {
+						return parse_terms(env, eq_begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> rhs_result) -> subparse_result {
 							// Assemble assignment from symbol and RHS.
 							auto [rhs_end, rhs] = std::move(rhs_result);
 							return std::pair{rhs_end, make_ast(ast::assign{symbol, std::move(rhs)})};
@@ -170,19 +204,21 @@ namespace gynjo {
 				[](auto const&) -> subparse_result { return tl::unexpected{"expected symbol"s}; });
 		}
 
-		auto parse_statement(token_it begin, token_it end) -> subparse_result {
+		//! Parses a statement, which is an assignment or an expression.
+		auto parse_statement(environment& env, token_it begin, token_it end) -> subparse_result {
 			// Assignment
-			auto assignment_result = parse_assignment(begin, end);
+			auto assignment_result = parse_assignment(env, begin, end);
 			if (assignment_result.has_value()) { return assignment_result; }
 			// Expression
-			auto expression_result = parse_terms(begin, end);
+			auto expression_result = parse_terms(env, begin, end);
 			if (expression_result.has_value()) { return expression_result; }
 			// Unrecognized statement
 			return tl::unexpected{"expected assignment or expression"s};
 		}
 
-		auto parse(token_it begin, token_it end) -> parse_result {
-			auto result = parse_statement(begin, end);
+		//! Parses all tokens from @p begin to @p end, checking that all input is used.
+		auto parse(environment& env, token_it begin, token_it end) -> parse_result {
+			auto result = parse_statement(env, begin, end);
 			if (result.has_value()) {
 				auto [expr_end, expr] = std::move(result.value());
 				log("parsed {}\n", to_string(expr));
@@ -197,7 +233,7 @@ namespace gynjo {
 		}
 	}
 
-	auto parse(std::vector<tok::token> tokens) -> parse_result {
-		return parse(tokens.begin(), tokens.end());
+	auto parse(environment& env, std::vector<tok::token> tokens) -> parse_result {
+		return parse(env, tokens.begin(), tokens.end());
 	}
 }

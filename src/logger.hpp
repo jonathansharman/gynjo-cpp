@@ -8,6 +8,7 @@
 #include <fmt/ostream.h>
 
 namespace gynjo {
+	//! Prints @p args using @p fmt::print if and only if in debug mode.
 	template <typename... Args>
 	auto log(Args&&... args) {
 #ifdef _DEBUG

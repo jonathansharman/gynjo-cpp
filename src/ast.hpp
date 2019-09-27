@@ -10,54 +10,102 @@
 #include <string>
 
 namespace gynjo::ast {
+	//! Union type of all AST node types.
 	using val =
-		std::variant<struct assign, struct add, struct neg, struct sub, struct mul, struct div, struct exp, tok::num, tok::sym>;
+		std::variant<struct assign, struct add, struct neg, struct sub, struct mul, struct div, struct exp, struct app, tok::num, tok::sym>;
+
+	//! Unique pointer to an AST node.
 	using ptr = std::unique_ptr<val>;
 
+	//! Assignment expression.
 	struct assign {
 		tok::sym symbol;
 		ptr rhs;
 	};
+	//! Addition expression.
 	struct add {
-		ptr a;
-		ptr b;
+		ptr addend1;
+		ptr addend2;
 	};
+	//! Negation expression.
 	struct neg {
 		ptr expr;
 	};
+	//! Binary subtraction expression.
 	struct sub {
-		ptr a;
-		ptr b;
+		ptr minuend;
+		ptr subtrahend;
 	};
+	//! Multiplication expression.
 	struct mul {
-		ptr a;
-		ptr b;
+		ptr factor1;
+		ptr factor2;
 	};
+	//! Division expression.
 	struct div {
-		ptr a;
-		ptr b;
+		ptr dividend;
+		ptr divisor;
 	};
+	//! Exponentiation expression.
 	struct exp {
-		ptr a;
-		ptr b;
+		ptr base;
+		ptr exponent;
+	};
+	// Function application expression.
+	struct app {
+		ptr f;
+		ptr arg;
 	};
 
+	//! Convenience function for creating an AST pointer from @p ast.
 	template <typename T>
-	auto make_ast(T&& val) {
-		return std::make_unique<ast::val>(std::forward<T>(val));
+	auto make_ast(T&& ast) {
+		return std::make_unique<ast::val>(std::forward<T>(ast));
 	}
 
+	//! Converts the AST pointer @p ast to a user-readable string.
 	inline auto to_string(ptr const& ast) -> std::string {
 		return match(
 			*ast,
 			[](assign const& assign) { return "(" + to_string(assign.symbol) + " = " + to_string(assign.rhs) + ")"; },
-			[](add const& add) { return "(" + to_string(add.a) + " + " + to_string(add.b) + ")"; },
+			[](add const& add) { return "(" + to_string(add.addend1) + " + " + to_string(add.addend2) + ")"; },
 			[](neg const& neg) { return "(-" + to_string(neg.expr) + ")"; },
-			[](sub const& sub) { return "(" + to_string(sub.a) + " - " + to_string(sub.b) + ")"; },
-			[](mul const& mul) { return "(" + to_string(mul.a) + " * " + to_string(mul.b) + ")"; },
-			[](div const& div) { return "(" + to_string(div.a) + " / " + to_string(div.b) + ")"; },
-			[](exp const& exp) { return "(" + to_string(exp.a) + " ^ " + to_string(exp.b) + ")"; },
+			[](sub const& sub) { return "(" + to_string(sub.minuend) + " - " + to_string(sub.subtrahend) + ")"; },
+			[](mul const& mul) { return "(" + to_string(mul.factor1) + " * " + to_string(mul.factor2) + ")"; },
+			[](div const& div) { return "(" + to_string(div.dividend) + " / " + to_string(div.divisor) + ")"; },
+			[](exp const& exp) { return "(" + to_string(exp.base) + " ^ " + to_string(exp.exponent) + ")"; },
+			[](app const& app) { return "(" + to_string(app.f) + "(" + to_string(app.arg) + "))"; },
 			[](tok::num const& num) { return num.rep; },
 			[](tok::sym const& sym) { return sym.name; });
+	}
+
+	//! Creates a deep copy of @p ast.
+	inline auto clone(ast::ptr const& ast) -> ast::ptr {
+		return match(
+			*ast,
+			[](assign const& assign) {
+				return make_ast(ast::assign{assign.symbol, clone(assign.rhs)});
+			},
+			[](add const& add) {
+				return make_ast(ast::add{clone(add.addend1), clone(add.addend2)});
+			},
+			[](neg const& neg) { return make_ast(ast::neg{clone(neg.expr)}); },
+			[](sub const& sub) {
+				return make_ast(ast::sub{clone(sub.minuend), clone(sub.subtrahend)});
+			},
+			[](mul const& mul) {
+				return make_ast(ast::mul{clone(mul.factor1), clone(mul.factor2)});
+			},
+			[](div const& div) {
+				return make_ast(ast::div{clone(div.dividend), clone(div.divisor)});
+			},
+			[](exp const& exp) {
+				return make_ast(ast::exp{clone(exp.base), clone(exp.exponent)});
+			},
+			[](app const& app) {
+				return make_ast(ast::app{clone(app.f), clone(app.arg)});
+			},
+			[](tok::num const& num) { return make_ast(num); },
+			[](tok::sym const& sym) { return make_ast(sym); });
 	}
 }
