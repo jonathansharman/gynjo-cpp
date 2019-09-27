@@ -42,6 +42,10 @@ namespace gynjo::tok {
 	struct rht {
 		auto operator<=>(rht const&) const = default;
 	};
+	//! Token for ",".
+	struct com {
+		auto operator<=>(com const&) const = default;
+	};
 	//! Token for floating-point numberical literals.
 	struct num {
 		std::string rep;
@@ -54,7 +58,7 @@ namespace gynjo::tok {
 	};
 
 	//! Union type of all valid tokens.
-	using token = std::variant<eq, plus, minus, mul, div, exp, lft, rht, num, sym>;
+	using token = std::variant<eq, plus, minus, mul, div, exp, lft, rht, com, num, sym>;
 
 	//! Converts the token @p tok to a user-readable string.
 	inline auto to_string(token tok) -> std::string {
@@ -69,6 +73,7 @@ namespace gynjo::tok {
 			[&](exp const&) { return "^"s; },
 			[&](lft const&) { return "("s; },
 			[&](rht const&) { return ")"s; },
+			[&](com const&) { return ","s; },
 			[&](num const& n) { return n.rep; },
 			[&](sym const& s) { return s.name; });
 	}

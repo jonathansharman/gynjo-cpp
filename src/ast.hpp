@@ -8,11 +8,12 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace gynjo::ast {
 	//! Union type of all AST node types.
 	using val =
-		std::variant<struct assign, struct add, struct neg, struct sub, struct mul, struct div, struct exp, struct app, tok::num, tok::sym>;
+		std::variant<struct assign, struct add, struct neg, struct sub, struct mul, struct div, struct exp, struct app, struct tup, tok::num, tok::sym>;
 
 	//! Unique pointer to an AST node.
 	using ptr = std::unique_ptr<val>;
@@ -56,6 +57,15 @@ namespace gynjo::ast {
 		ptr f;
 		ptr arg;
 	};
+	// Tuple expression.
+	struct tup {
+		std::vector<ptr> elems;
+
+		template <typename... Args>
+		tup(Args&&... args) {
+			(elems.push_back(std::forward<Args>(args)), ...);
+		}
+	};
 
 	//! Convenience function for creating an AST pointer from @p ast.
 	template <typename T>
@@ -75,6 +85,17 @@ namespace gynjo::ast {
 			[](div const& div) { return "(" + to_string(div.dividend) + " / " + to_string(div.divisor) + ")"; },
 			[](exp const& exp) { return "(" + to_string(exp.base) + " ^ " + to_string(exp.exponent) + ")"; },
 			[](app const& app) { return "(" + to_string(app.f) + "(" + to_string(app.arg) + "))"; },
+			[](tup const& tup) {
+				std::string result = "(";
+				if (!tup.elems.empty()) {
+					result += to_string(tup.elems.front());
+					for (auto it = tup.elems.begin() + 1; it != tup.elems.end(); ++it) {
+						result += ", " + to_string(*it);
+					}
+				}
+				result += ")";
+				return result;
+			},
 			[](tok::num const& num) { return num.rep; },
 			[](tok::sym const& sym) { return sym.name; });
 	}
@@ -104,6 +125,13 @@ namespace gynjo::ast {
 			},
 			[](app const& app) {
 				return make_ast(ast::app{clone(app.f), clone(app.arg)});
+			},
+			[](tup const& tup) {
+				ast::tup result;
+				for (auto const& elem : tup.elems) {
+					result.elems.push_back(clone(elem));
+				}
+				return make_ast(std::move(result));
 			},
 			[](tok::num const& num) { return make_ast(num); },
 			[](tok::sym const& sym) { return make_ast(sym); });

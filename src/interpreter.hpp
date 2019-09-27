@@ -10,7 +10,7 @@
 
 namespace gynjo {
 	//! Either a Gynjo value or an error message.
-	using eval_result = tl::expected<val::val, std::string>;
+	using eval_result = tl::expected<val::value, std::string>;
 
 	//! Computes the value of @p ast in the context of @env, if possible.
 	auto eval(environment& env, ast::ptr const& ast) -> eval_result;

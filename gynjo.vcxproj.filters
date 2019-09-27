@@ -44,9 +44,6 @@
     <ClInclude Include="src\interpreter.hpp">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="src\logger.hpp">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="src\tokens.hpp">
       <Filter>src</Filter>
     </ClInclude>

@@ -5,7 +5,6 @@
 
 #include "interpreter.hpp" // Used to distinguish between products and function applications.
 #include "lexer.hpp"
-#include "logger.hpp"
 #include "visitation.hpp"
 
 namespace gynjo {
@@ -19,30 +18,47 @@ namespace gynjo {
 
 		//! Parses a Gynjo value.
 		auto parse_value(environment& env, token_it begin, token_it end) -> subparse_result {
-			if (begin == end) { return tl::unexpected{"expected expression"s}; }
+			if (begin == end) { return tl::unexpected{"expected value"s}; }
+			auto const first_token = *begin;
+			auto it = begin + 1;
 			return match(
-				*begin,
-				// Parenthetical expression
+				first_token,
+				// Tuple
 				[&](tok::lft const&) -> subparse_result {
-					auto expr_result = parse_terms(env, begin + 1, end);
-					if (expr_result.has_value()) {
-						auto [expr_end, expr] = std::move(expr_result.value());
-						if (expr_end == end || !std::holds_alternative<tok::rht>(*expr_end)) {
-							return tl::unexpected{"expected ')'"s};
-						} else {
-							return std::pair{expr_end + 1, std::move(expr)};
+					ast::tup tuple;
+					// Try to parse an expression.
+					auto first_result = parse_terms(env, it, end);
+					if (first_result.has_value()) {
+						auto [first_end, first] = std::move(first_result.value());
+						it = first_end;
+						tuple.elems.push_back(std::move(first));
+						// Try to parse additional comma-delimited expressions.
+						while (it != end && std::holds_alternative<tok::com>(*it)) {
+							++it;
+							auto next_result = parse_terms(env, it, end);
+							if (next_result.has_value()) {
+								auto [next_end, next] = std::move(next_result.value());
+								it = next_end;
+								tuple.elems.push_back(std::move(next));
+							} else {
+								return tl::unexpected{"expected expression after ','"s};
+							}
 						}
+					}
+					// Parse close parenthesis.
+					if (it == end || !std::holds_alternative<tok::rht>(*it)) {
+						return tl::unexpected{"expected ')'"s};
 					} else {
-						return expr_result;
+						return std::pair{it + 1, make_ast(std::move(tuple))};
 					}
 				},
 				// Number
 				[&](tok::num const& num) -> subparse_result {
-					return std::pair{begin + 1, make_ast(ast::val{num})};
+					return std::pair{it, make_ast(ast::val{num})};
 				},
 				// Symbol
 				[&](tok::sym const& sym) -> subparse_result {
-					return std::pair{begin + 1, make_ast(ast::val{sym})};
+					return std::pair{it, make_ast(ast::val{sym})};
 				},
 				// Anything else is unexpected.
 				[](auto const& t) -> subparse_result {
@@ -217,7 +233,6 @@ namespace gynjo {
 			auto result = parse_statement(env, begin, end);
 			if (result.has_value()) {
 				auto [expr_end, expr] = std::move(result.value());
-				log("parsed {}\n", to_string(expr));
 				if (expr_end != end) {
 					return tl::unexpected{"unused input"s};
 				} else {

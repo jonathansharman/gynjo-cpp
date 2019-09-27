@@ -149,7 +149,6 @@
     <ClInclude Include="src\ast.hpp" />
     <ClInclude Include="src\interpreter.hpp" />
     <ClInclude Include="src\lexer.hpp" />
-    <ClInclude Include="src\logger.hpp" />
     <ClInclude Include="src\parser.hpp" />
     <ClInclude Include="src\tokens.hpp" />
     <ClInclude Include="src\values.hpp" />

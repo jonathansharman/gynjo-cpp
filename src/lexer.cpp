@@ -5,8 +5,9 @@
 
 #include "lexer.hpp"
 
-#include "logger.hpp"
 #include "visitation.hpp"
+
+#include <fmt/format.h>
 
 #include <functional>
 #include <optional>
@@ -27,6 +28,7 @@ namespace gynjo {
 			{std::regex{R"...(\^)..."}, [](std::smatch const&) { return tok::exp{}; }},
 			{std::regex{R"...(\()..."}, [](std::smatch const&) { return tok::lft{}; }},
 			{std::regex{R"...(\))..."}, [](std::smatch const&) { return tok::rht{}; }},
+			{std::regex{R"...(,)..."}, [](std::smatch const&) { return tok::com{}; }},
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)..."}, [](std::smatch const& m) { return tok::num{m.str()}; }},
 			{std::regex{R"...([a-zA-Z]+)..."}, [](std::smatch const& m) { return tok::sym{m.str()}; }},
 			{std::regex{R"...(\s+)..."}, [](std::smatch const&) { return std::nullopt; }}};
@@ -50,11 +52,6 @@ namespace gynjo {
 				return tl::unexpected{fmt::format("unrecognized token: '{}'", token_match.str())};
 			}
 		}
-		log("lexed");
-		for (auto const& token : result) {
-			log(" {}", to_string(token));
-		}
-		log("\n");
 		return result;
 	}
 }

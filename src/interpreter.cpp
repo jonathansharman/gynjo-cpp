@@ -19,15 +19,15 @@ namespace gynjo {
 	namespace {
 		template <typename F>
 		auto eval_unary(environment& env, ast::ptr const& expr, F&& f) -> eval_result {
-			return eval(env, expr).and_then([&](val::val const& val) { return std::forward<F>(f)(val); });
+			return eval(env, expr).and_then([&](val::value const& val) { return std::forward<F>(f)(val); });
 		}
 
 		template <typename F>
 		auto eval_binary(environment& env, ast::ptr const& a, ast::ptr const& b, F&& f) -> eval_result {
 			return eval(env, a) //
-				.and_then([&](val::val const& a) { //
+				.and_then([&](val::value const& a) { //
 					return eval(env, b) //
-						.and_then([&](val::val const& b) { //
+						.and_then([&](val::value const& b) { //
 							return std::forward<F>(f)(a, b);
 						});
 				});
@@ -39,18 +39,18 @@ namespace gynjo {
 		return match(
 			*ast,
 			[&](ast::assign const& assign) {
-				return eval(env, assign.rhs).and_then([&](val::val expr_value) -> eval_result {
+				return eval(env, assign.rhs).and_then([&](val::value expr_value) -> eval_result {
 					env[assign.symbol.name] = expr_value;
 					return expr_value;
 				});
 			},
 			[&](ast::add const& add) {
-				return eval_binary(env, add.addend1, add.addend2, [](val::val const& a, val::val const& b) -> eval_result {
+				return eval_binary(env, add.addend1, add.addend2, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
 						[&](val::num const& addend1, val::num const& addend2) -> eval_result {
-							return addend1 + addend2;
+							return val::num{addend1 + addend2};
 						},
 						[](auto const& addend1, auto const& addend2) -> eval_result {
 							return tl::unexpected{
@@ -59,22 +59,22 @@ namespace gynjo {
 				});
 			},
 			[&](ast::neg const& neg) {
-				return eval_unary(env, neg.expr, [](val::val const& val) -> eval_result {
+				return eval_unary(env, neg.expr, [](val::value const& val) -> eval_result {
 					return match(
 						val,
-						[&](val::num const& num) -> eval_result { return -num; },
+						[&](val::num const& num) -> eval_result { return val::num{-num}; },
 						[](auto const& expr) -> eval_result {
 							return tl::unexpected{fmt::format("cannot negate {}", to_string(expr))};
 						});
 				});
 			},
 			[&](ast::sub const& sub) {
-				return eval_binary(env, sub.minuend, sub.subtrahend, [](val::val const& a, val::val const& b) -> eval_result {
+				return eval_binary(env, sub.minuend, sub.subtrahend, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
 						[&](val::num const& minuend, val::num const& subtrahend) -> eval_result {
-							return minuend - subtrahend;
+							return val::num{minuend - subtrahend};
 						},
 						[](auto const& minuend, auto const& subtrahend) -> eval_result {
 							return tl::unexpected{fmt::format(
@@ -83,12 +83,12 @@ namespace gynjo {
 				});
 			},
 			[&](ast::mul const& mul) {
-				return eval_binary(env, mul.factor1, mul.factor2, [](val::val const& a, val::val const& b) -> eval_result {
+				return eval_binary(env, mul.factor1, mul.factor2, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
 						[&](val::num const& factor1, val::num const& factor2) -> eval_result {
-							return factor1 * factor2;
+							return val::num{factor1 * factor2};
 						},
 						[](auto const& factor1, auto const& factor2) -> eval_result {
 							return tl::unexpected{
@@ -97,13 +97,13 @@ namespace gynjo {
 				});
 			},
 			[&](ast::div const& div) {
-				return eval_binary(env, div.dividend, div.divisor, [](val::val const& a, val::val const& b) -> eval_result {
+				return eval_binary(env, div.dividend, div.divisor, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
 						[&](val::num const& dividend, val::num const& divisor) -> eval_result {
 							if (divisor == 0) { return tl::unexpected{"division by zero"s}; }
-							return dividend / divisor;
+							return val::num{dividend / divisor};
 						},
 						[](auto const& dividend, auto const& divisor) -> eval_result {
 							return tl::unexpected{
@@ -112,12 +112,12 @@ namespace gynjo {
 				});
 			},
 			[&](ast::exp const& exp) {
-				return eval_binary(env, exp.base, exp.exponent, [](val::val const& a, val::val const& b) -> eval_result {
+				return eval_binary(env, exp.base, exp.exponent, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
 						[&](val::num const& base, val::num const& exponent) -> eval_result {
-							return boost::multiprecision::pow(base, exponent);
+							return val::num{boost::multiprecision::pow(base, exponent)};
 						},
 						[](auto const& base, auto const& exponent) -> eval_result {
 							return tl::unexpected{fmt::format(
@@ -127,33 +127,42 @@ namespace gynjo {
 			},
 			[&](ast::app const& app) {
 				// Evaluate the function and ensure it is a function value.
-				return eval(env, app.f).and_then([&](val::val result) {
+				return eval(env, app.f).and_then([&](val::value result) {
 					return match(
 						result,
 						[&](val::fun const& f) {
-							// Evaluate the argument and ensure it is a tuple.
-							return eval(env, app.arg).and_then([&](val::val arg) {
+							// Evaluate the argument.
+							return eval(env, app.arg).and_then([&](val::value arg) {
 								return match(
 									arg,
 									[&](val::tup const& tup) -> eval_result {
 										// Ensure correct number of arguments.
-										if (tup.elements.size() != f.params.size()) {
+										if (tup.elems.size() != f.params.size()) {
 											return tl::unexpected{
-												fmt::format("attempted to call {}-ary function with {} arguments.",
+												fmt::format("attempted to call {}-ary function with {} argument{}.",
 													f.params.size(),
-													tup.elements.size())};
+													tup.elems.size(),
+													tup.elems.size() == 1 ? "" : "s")};
 										}
 										// Assign arguments to parameters within a local environment.
 										auto f_env = env;
-										std::size_t const n = tup.elements.size();
-										for (std::size_t i = 0; i < n; ++i) {
-											f_env[f.params[i].name] = *tup.elements[i];
+										for (std::size_t i = 0; i < tup.elems.size(); ++i) {
+											f_env[f.params[i].name] = *tup.elems[i];
 										}
 										// Evaluate function body within the local environment.
 										return eval(f_env, f.body);
 									},
-									[](auto const&) -> eval_result {
-										return tl::unexpected{"attempted to call function with non-tuple"s};
+									[&](auto const& arg) -> eval_result {
+										// Single-argument call.
+										if (f.params.size() != 1) {
+											return tl::unexpected{fmt::format(
+												"attempted to call {}-ary function with 1 argument.", f.params.size())};
+										}
+										// Assign argument to parameter within a local environment.
+										auto f_env = env;
+										f_env[f.params.front().name] = arg;
+										// Evaluate function body within the local environment.
+										return eval(f_env, f.body);
 									});
 							});
 						},
@@ -161,6 +170,23 @@ namespace gynjo {
 							return tl::unexpected{fmt::format("attemped to apply {} as a function", val::to_string(val))};
 						});
 				});
+			},
+			[&](ast::tup const& tup_ast) -> eval_result {
+				if (tup_ast.elems.size() == 1) {
+					// Collapse a singleton into its contained value. This allows use of parentheses for value grouping
+					// without having to special-case the other evaluators when the arguments are singletons.
+					return eval(env, tup_ast.elems.front());
+				}
+				val::tup tup_val;
+				for (auto const& elem_ast : tup_ast.elems) {
+					auto elem_result = eval(env, elem_ast);
+					if (elem_result.has_value()) {
+						tup_val.elems.push_back(make_value(std::move(elem_result.value())));
+					} else {
+						return elem_result;
+					}
+				}
+				return tup_val;
 			},
 			[](tok::num const& num) -> eval_result { return val::num{num.rep}; },
 			[&](tok::sym const& sym) -> eval_result {
