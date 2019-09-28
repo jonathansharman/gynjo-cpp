@@ -1,7 +1,3 @@
-Release
-Debug
-Test
+x64
 .vs
-/Questless/Questless.VC.db
-/Questless/Questless.VC.VC.opendb
-/Questless/Questless/Questless.vcxproj.user
+*.vcxproj.user

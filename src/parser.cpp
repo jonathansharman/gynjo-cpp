@@ -102,7 +102,7 @@ namespace gynjo {
 		//! Evaluates @p ast and checks whether the result is a function.
 		auto evaluates_to_function(environment& env, ast::ptr const& ast) {
 			auto result = eval(env, ast);
-			return result.has_value() && match(result.value(), [](auto const&) { return false; });
+			return result.has_value() && std::holds_alternative<val::fun>(result.value());
 		}
 
 		//! Parses a function application.
