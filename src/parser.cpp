@@ -3,8 +3,6 @@
 
 #include "parser.hpp"
 
-#include "interpreter.hpp" // Used to distinguish between products and function applications.
-#include "lexer.hpp"
 #include "visitation.hpp"
 
 #include <algorithm>
@@ -99,89 +97,56 @@ namespace gynjo {
 				});
 		}
 
-		//! Evaluates @p ast and checks whether the result is a function.
-		auto evaluates_to_function(environment& env, ast::ptr const& ast) {
-			auto result = eval(env, ast);
-			return result.has_value() && std::holds_alternative<val::fun>(result.value());
-		}
-
-		//! Parses a function application.
-		auto parse_application(environment& env, token_it begin, token_it end) -> subparse_result {
+		//! Parses a cluster of function calls, exponentiations, (possibly implicit) multiplications, and/or divisions.
+		//! The result is something that will require further parsing by the interpreter using available semantic info.
+		auto parse_cluster(environment& env, token_it begin, token_it end) -> subparse_result {
 			return parse_value(env, begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
-				auto [it, app] = std::move(result);
-				// Read arguments and chain function applications as long as possible.
-				auto arg_result = parse_value(env, it, end);
-				while (arg_result.has_value() && evaluates_to_function(env, app)) {
-					auto [arg_end, arg] = std::move(arg_result.value());
-					it = arg_end;
-					app = make_node(ast::app{std::move(app), std::move(arg)});
-					arg_result = parse_value(env, it, end);
-				}
-				// Return resulting expression once applications can no longer be chained.
-				return std::pair{it, std::move(app)};
-			});
-		}
-
-		//! Parses a series of exponential operations.
-		auto parse_exponentials(environment& env, token_it begin, token_it end) -> subparse_result {
-			return parse_application(env, begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
-				auto [it, exponentials] = std::move(result);
-				while (it != end && std::holds_alternative<tok::exp>(*it)) {
-					auto const token = *it;
-					auto next_result = parse_application(env, it + 1, end);
-					if (next_result.has_value()) {
-						auto [next_end, next_exponential] = std::move(next_result.value());
-						exponentials = ast::make_node(ast::exp{std::move(exponentials), std::move(next_exponential)});
-						it = next_end;
-					} else {
-						return tl::unexpected{"expected power"s};
-					}
-				}
-				return std::pair{it, std::move(exponentials)};
-			});
-		}
-
-		//! Parses a series of multiplications (implicit or explicit) and divisions.
-		auto parse_factors(environment& env, token_it begin, token_it end) -> subparse_result {
-			return parse_exponentials(env, begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
-				auto [it, factors] = std::move(result);
+				auto [it, first] = std::move(result);
+				std::vector<std::pair<ast::cluster::connector, ast::ptr>> rest;
 				while (it != end) {
 					// The following match determines three things:
 					//   1) The iterator offset to the start of the next factor
 					//   2) Whether the next factor is required or optional
-					//   3) Whether to multiply or divide by the next factor
-					auto [it_offset, required, multiply] = match(
+					//   3) The connector to the cluster element, if any.
+					auto [it_offset, required, connector] = match(
 						*it,
 						[](tok::mul) {
-							return std::tuple{1, true, true};
+							return std::tuple{1, true, ast::cluster::connector::mul};
 						},
 						[](tok::div) {
-							return std::tuple{1, true, false};
+							return std::tuple{1, true, ast::cluster::connector::div};
+						},
+						[](tok::exp) {
+							return std::tuple{1, true, ast::cluster::connector::exp};
+						},
+						[](tok::lft) {
+							return std::tuple{0, true, ast::cluster::connector::adj_paren};
 						},
 						[](auto const&) {
-							return std::tuple{0, false, true};
+							return std::tuple{0, false, ast::cluster::connector::adj_nonparen};
 						});
-					// Try to read a factor.
-					auto next_result = parse_exponentials(env, it + it_offset, end);
+					// Try to read a cluster element.
+					auto next_result = parse_value(env, it + it_offset, end);
 					if (!next_result.has_value()) {
 						if (required) {
-							// Saw an explicit operator but did not find another factor.
-							return tl::unexpected{"expected factor"s};
+							// Saw an explicit operator but did not find another cluster element.
+							return tl::unexpected{"expected a value"s};
 						} else {
-							// This factor was optional. Just stop reading factors now.
+							// This factor was optional. Just stop reading cluster elements now.
 							break;
 						}
 					}
-					// Got another factor.
-					auto [next_end, next_factor] = std::move(next_result.value());
+					// Got another cluster item.
+					auto [next_end, next_item] = std::move(next_result.value());
 					it = next_end;
-					if (multiply) {
-						factors = ast::make_node(ast::mul{std::move(factors), std::move(next_factor)});
-					} else {
-						factors = ast::make_node(ast::div{std::move(factors), std::move(next_factor)});
-					}
+					rest.emplace_back(connector, std::move(next_item));
 				}
-				return std::pair{it, std::move(factors)};
+				return std::pair{it,
+					rest.empty()
+						// Found a single value.
+						? std::move(first)
+						// Found a cluster of values.
+						: make_node(ast::cluster{std::move(first), std::move(rest)})};
 			});
 		}
 
@@ -192,15 +157,15 @@ namespace gynjo {
 				*begin,
 				// Unary minus
 				[&](tok::minus) {
-					return parse_factors(env, begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+					return parse_cluster(env, begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 						auto [factor_end, factor] = std::move(result);
 						return std::pair{factor_end, make_node(ast::neg{std::move(factor)})};
 					});
 				},
 				// Unary plus (ignored)
-				[&](tok::plus) { return parse_factors(env, begin + 1, end); },
+				[&](tok::plus) { return parse_cluster(env, begin + 1, end); },
 				// Unsigned
-				[&](auto const&) { return parse_factors(env, begin, end); });
+				[&](auto const&) { return parse_cluster(env, begin, end); });
 		}
 
 		//! Parses a series of additions and subtractions.

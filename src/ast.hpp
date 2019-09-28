@@ -15,7 +15,7 @@
 namespace gynjo::ast {
 	//! Union type of all AST node types.
 	using node =
-		std::variant<struct assign, struct add, struct neg, struct sub, struct mul, struct div, struct exp, struct app, struct fun, struct tup, tok::num, tok::sym>;
+		std::variant<struct assign, struct add, struct neg, struct sub, struct cluster, struct fun, struct tup, tok::num, tok::sym>;
 
 	//! Unique pointer to an AST node.
 	using ptr = std::unique_ptr<node>;
@@ -39,25 +39,22 @@ namespace gynjo::ast {
 		ptr minuend;
 		ptr subtrahend;
 	};
-	//! Multiplication expression.
-	struct mul {
-		ptr factor1;
-		ptr factor2;
-	};
-	//! Division expression.
-	struct div {
-		ptr dividend;
-		ptr divisor;
-	};
-	//! Exponentiation expression.
-	struct exp {
-		ptr base;
-		ptr exponent;
-	};
-	// Function application expression.
-	struct app {
-		ptr f;
-		ptr arg;
+	//! A cluster of function calls, exponentiations, (possibly implicit) multiplications, and/or divisions.
+	//! @note This large grouping of operations is as fine-grained as possible in the parsing stage. Breaking this down
+	//! into specific operations requires additional parsing in the evaluation stage since determining the order of
+	//! operations requires type info.
+	struct cluster {
+		//! The way in which a cluster item is attached to the preceding elements of the cluster.
+		enum class connector {
+			adj_paren, // Adjacent value enclosed in parentheses
+			adj_nonparen, // Adjacent value not enclosed in parentheses
+			mul, // Explicit multiplication
+			div, // Explicit division
+			exp, // Explicit exponentiation
+		};
+
+		ptr first;
+		std::vector<std::pair<connector, ptr>> rest;
 	};
 	// Tuple expression.
 	struct tup {
@@ -90,10 +87,30 @@ namespace gynjo::ast {
 			[](add const& add) { return fmt::format("({} + {})", to_string(*add.addend1), to_string(*add.addend2)); },
 			[](neg const& neg) { return fmt::format("(-{})", to_string(*neg.expr)); },
 			[](sub const& sub) { return fmt::format("({} - {})", to_string(*sub.minuend), to_string(*sub.subtrahend)); },
-			[](mul const& mul) { return fmt::format("({} * {})", to_string(*mul.factor1), to_string(*mul.factor2)); },
-			[](div const& div) { return fmt::format("({} / {})", to_string(*div.dividend), to_string(*div.divisor)); },
-			[](exp const& exp) { return fmt::format("({} ^ {})", to_string(*exp.base), to_string(*exp.exponent)); },
-			[](app const& app) { return fmt::format("({} {})", to_string(*app.f), to_string(*app.arg)); },
+			[](cluster const& cluster) {
+				std::string result = "(" + to_string(*cluster.first);
+				for (auto const& item : cluster.rest) {
+					switch (item.first) {
+						case cluster::connector::adj_paren:
+							result += " (" + to_string(*item.second) + ")";
+							break;
+						case cluster::connector::adj_nonparen:
+							result += " " + to_string(*item.second);
+							break;
+						case cluster::connector::mul:
+							result += " * " + to_string(*item.second);
+							break;
+						case cluster::connector::div:
+							result += " / " + to_string(*item.second);
+							break;
+						case cluster::connector::exp:
+							result += " ^ " + to_string(*item.second);
+							break;
+					}
+				}
+				result += ")";
+				return result;
+			},
 			[](fun const& f) { return fmt::format("({} -> {})", to_string(*f.params), to_string(*f.body)); },
 			[](tup const& tup) {
 				std::string result = "(";
@@ -124,17 +141,12 @@ namespace gynjo::ast {
 			[](sub const& sub) {
 				return make_node(ast::sub{clone(*sub.minuend), clone(*sub.subtrahend)});
 			},
-			[](mul const& mul) {
-				return make_node(ast::mul{clone(*mul.factor1), clone(*mul.factor2)});
-			},
-			[](div const& div) {
-				return make_node(ast::div{clone(*div.dividend), clone(*div.divisor)});
-			},
-			[](exp const& exp) {
-				return make_node(ast::exp{clone(*exp.base), clone(*exp.exponent)});
-			},
-			[](app const& app) {
-				return make_node(ast::app{clone(*app.f), clone(*app.arg)});
+			[](cluster const& c) {
+				std::vector<std::pair<cluster::connector, ptr>> rest;
+				for (auto const& item : c.rest) {
+					rest.emplace_back(item.first, clone(*item.second));
+				}
+				return make_node(cluster{clone(*c.first), std::move(rest)});
 			},
 			[](fun const& f) {
 				return make_node(ast::fun{clone(*f.params), clone(*f.body)});
