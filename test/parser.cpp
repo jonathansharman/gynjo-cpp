@@ -49,7 +49,6 @@ TEST_SUITE("parser") {
 				tok::num{"4"},
 				tok::rht{}});
 
-		CHECK(actual.has_value());
 		CHECK(to_string(*expected) == to_string(*actual.value()));
 	}
 }

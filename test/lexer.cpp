@@ -36,7 +36,6 @@ TEST_SUITE("lexer") {
 
 		auto const actual = lex("5*( 1+ \t -->2)^***  =/ .1 0 0.1,");
 
-		CHECK(actual.has_value());
 		CHECK(expected == actual.value());
 	}
 }

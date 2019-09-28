@@ -17,7 +17,6 @@ TEST_SUITE("interpreter") {
 		environment env{};
 		val::value const expected = val::num{-1.0};
 		auto const actual = eval(env, "1-2");
-		CHECK(actual.has_value());
 		CHECK(expected == actual.value());
 	}
 
@@ -25,7 +24,6 @@ TEST_SUITE("interpreter") {
 		environment env{};
 		val::value const expected = val::num{-15.0};
 		auto const actual = eval(env, "-5 * (1 +  2)");
-		CHECK(actual.has_value());
 		CHECK(expected == actual.value());
 	}
 
@@ -33,7 +31,6 @@ TEST_SUITE("interpreter") {
 		environment env{};
 		val::value const expected = val::num{42};
 		auto const actual = eval(env, "x = 42");
-		CHECK(actual.has_value());
 		CHECK(expected == actual.value());
 	}
 
@@ -46,27 +43,32 @@ TEST_SUITE("interpreter") {
 			}) //
 		};
 		auto const actual = eval(env, "(1, (2, 3))");
-		CHECK(actual.has_value());
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("simple function application") {
 		environment env{};
-		val::value const expected = val::num{42};
 		eval(env, "f = () -> 42");
+		val::value const expected = val::num{42};
 		auto const actual = eval(env, "f()");
-		CHECK(actual.has_value());
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("order of operations with function application and implicit multiplication") {
 		environment env{};
-		val::value const expected = val::num{8};
 		eval(env, "a = 2");
 		eval(env, "inc = a -> a + 1");
 		eval(env, "b = 3");
+		val::value const expected = val::num{8};
 		auto const actual = eval(env, "a inc b");
-		CHECK(actual.has_value());
+		CHECK(expected == actual.value());
+	}
+
+	TEST_CASE("higher-order functions") {
+		environment env{};
+		val::value const expected = val::num{42};
+		eval(env, "apply = (f, a) -> f(a)");
+		auto const actual = eval(env, "apply(a -> a, 42)");
 		CHECK(expected == actual.value());
 	}
 }
