@@ -171,6 +171,14 @@ namespace gynjo {
 						});
 				});
 			},
+			[&](ast::fun const& f_ast) -> eval_result {
+				std::vector<val::fun::param> params_val;
+				// The parser guarantees that f_ast.params is tuple of symbols.
+				for (auto const& param_ast : std::get<ast::tup>(*f_ast.params).elems) {
+					params_val.push_back(val::fun::param{std::get<tok::sym>(*param_ast).name});
+				}
+				return val::fun{std::move(params_val), clone(*f_ast.body)};
+			},
 			[&](ast::tup const& tup_ast) -> eval_result {
 				val::tup tup_val;
 				for (auto const& elem_ast : tup_ast.elems) {

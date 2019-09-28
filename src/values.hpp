@@ -24,14 +24,14 @@ namespace gynjo::val {
 		std::vector<param> params;
 		ast::ptr body;
 
-		fun(std::vector<param> params, ast::ptr body) : params{params}, body{std::move(body)} {}
+		fun(std::vector<param> params, ast::ptr body) : params{std::move(params)}, body{std::move(body)} {}
 
-		fun(fun const& other) : params{other.params}, body{clone(other.body)} {}
+		fun(fun const& other) : params{other.params}, body{clone(*other.body)} {}
 		fun(fun&& other) = default;
 
 		fun& operator=(fun const& other) {
 			params = other.params;
-			body = clone(other.body);
+			body = clone(*other.body);
 			return *this;
 		}
 		fun& operator=(fun&& other) = default;
@@ -59,26 +59,26 @@ namespace gynjo::val {
 			(elems.push_back(std::forward<Args>(args)), ...);
 		}
 
-		tup(tup const& other) {
-			for (auto& elem : other.elems) {
+		tup(tup const& that) {
+			for (auto& elem : that.elems) {
 				elems.push_back(make_value(*elem));
 			}
 		}
-		tup(tup&& other) = default;
+		tup(tup&&) = default;
 
-		tup& operator=(tup const& other) {
+		tup& operator=(tup const& that) {
 			elems.clear();
-			for (auto& elem : other.elems) {
+			for (auto& elem : that.elems) {
 				elems.push_back(make_value(*elem));
 			}
 			return *this;
 		}
-		tup& operator=(tup&& other) = default;
+		tup& operator=(tup&& B) = default;
 
-		bool operator==(tup const& other) const {
-			if (elems.size() != other.elems.size()) { return false; }
+		bool operator==(tup const& that) const {
+			if (elems.size() != that.elems.size()) { return false; }
 			for (std::size_t i = 0; i < elems.size(); ++i) {
-				if (*elems[i] != *other.elems[i]) { return false; }
+				if (*elems[i] != *that.elems[i]) { return false; }
 			}
 			return true;
 		}
@@ -106,6 +106,16 @@ namespace gynjo::val {
 				result += ")";
 				return result;
 			},
-			[](fun const& fun) { return "() -> " + to_string(fun.body); });
+			[](fun const& f) {
+				std::string result = "(";
+				if (!f.params.empty()) {
+					result += f.params.front().name;
+					for (auto it = f.params.begin() + 1; it != f.params.end(); ++it) {
+						result += ", " + it->name;
+					}
+				}
+				result += ") -> " + ast::to_string(*f.body);
+				return result;
+			});
 	}
 }

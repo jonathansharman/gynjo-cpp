@@ -7,6 +7,8 @@
 #include "lexer.hpp"
 #include "visitation.hpp"
 
+#include <algorithm>
+
 namespace gynjo {
 	namespace {
 		using namespace std::string_literals;
@@ -16,6 +18,14 @@ namespace gynjo {
 
 		auto parse_terms(environment& env, token_it begin, token_it end) -> subparse_result;
 
+		//! Parses a function body.
+		auto parse_body(environment& env, token_it begin, token_it end) -> subparse_result {
+			if (begin == end || !std::holds_alternative<tok::arrow>(*begin)) {
+				return tl::unexpected{"expected function body"s};
+			}
+			return parse_terms(env, begin + 1, end);
+		}
+
 		//! Parses a Gynjo value.
 		auto parse_value(environment& env, token_it begin, token_it end) -> subparse_result {
 			if (begin == end) { return tl::unexpected{"expected value"s}; }
@@ -23,45 +33,65 @@ namespace gynjo {
 			auto it = begin + 1;
 			return match(
 				first_token,
-				// Tuple
+				// Tuple or lambda
 				[&](tok::lft const&) -> subparse_result {
-					ast::tup tuple;
+					ast::tup tup;
+					// Keep track of whether all tup elements are symbols (possible lambda parameter list).
+					bool could_be_lambda = true;
 					// Try to parse an expression.
 					auto first_result = parse_terms(env, it, end);
 					if (first_result.has_value()) {
 						auto [first_end, first] = std::move(first_result.value());
 						it = first_end;
+						could_be_lambda = could_be_lambda && std::holds_alternative<tok::sym>(*first);
+						tup.elems.push_back(std::move(first));
 						// Try to parse additional comma-delimited expressions.
-						tuple.elems.push_back(std::move(first));
 						while (it != end && std::holds_alternative<tok::com>(*it)) {
 							++it;
 							auto next_result = parse_terms(env, it, end);
 							if (next_result.has_value()) {
 								auto [next_end, next] = std::move(next_result.value());
 								it = next_end;
-								tuple.elems.push_back(std::move(next));
+								could_be_lambda = could_be_lambda && std::holds_alternative<tok::sym>(*next);
+								tup.elems.push_back(std::move(next));
 							} else {
 								return tl::unexpected{"expected expression after ','"s};
 							}
 						}
 					}
 					// Parse close parenthesis.
-					if (it == end || !std::holds_alternative<tok::rht>(*it)) {
-						return tl::unexpected{"expected ')'"s};
-					} else {
-						// Collapse singletons back into their contained values. This allows use of parentheses for
-						// value grouping without having to special-case interpretation when an argument is a singleton.
-						return std::pair{it + 1,
-							tuple.elems.size() == 1 ? std::move(tuple.elems.front()) : make_ast(std::move(tuple))};
+					if (it == end || !std::holds_alternative<tok::rht>(*it)) { return tl::unexpected{"expected ')'"s}; }
+					++it;
+					// Check for lambda expression.
+					if (could_be_lambda) {
+						// Try to parse a lambda body.
+						auto body_result = parse_body(env, it, end);
+						if (body_result.has_value()) {
+							// Assemble lambda from parameter tuple and body.
+							auto [body_end, body] = std::move(body_result.value());
+							return std::pair{body_end, make_node(ast::fun{make_node(std::move(tup)), std::move(body)})};
+						}
 					}
+					// Collapse singletons back into their contained values. This allows use of parentheses for
+					// value grouping without having to special-case interpretation when an argument is a singleton.
+					return std::pair{it, tup.elems.size() == 1 ? std::move(tup.elems.front()) : make_node(std::move(tup))};
 				},
 				// Number
 				[&](tok::num const& num) -> subparse_result {
-					return std::pair{it, make_ast(ast::val{num})};
+					return std::pair{it, ast::make_node(num)};
 				},
-				// Symbol
+				// Symbol or lambda
 				[&](tok::sym const& sym) -> subparse_result {
-					return std::pair{it, make_ast(ast::val{sym})};
+					// Could be a parentheses-less unary lambda. Try to parse a lambda body.
+					auto body_result = parse_body(env, it, end);
+					if (body_result.has_value()) {
+						// Assemble lambda from the parameter wrapped in a tuple and the body.
+						auto [body_end, body] = std::move(body_result.value());
+						return std::pair{body_end,
+							make_node(ast::fun{ast::make_node(ast::tup{ast::make_node(sym)}), std::move(body)})};
+					}
+					// It's just a symbol.
+					return std::pair{it, ast::make_node(sym)};
 				},
 				// Anything else is unexpected.
 				[](auto const& t) -> subparse_result {
@@ -84,7 +114,7 @@ namespace gynjo {
 				while (arg_result.has_value() && evaluates_to_function(env, app)) {
 					auto [arg_end, arg] = std::move(arg_result.value());
 					it = arg_end;
-					app = make_ast(ast::app{std::move(app), std::move(arg)});
+					app = make_node(ast::app{std::move(app), std::move(arg)});
 					arg_result = parse_value(env, it, end);
 				}
 				// Return resulting expression once applications can no longer be chained.
@@ -101,7 +131,7 @@ namespace gynjo {
 					auto next_result = parse_application(env, it + 1, end);
 					if (next_result.has_value()) {
 						auto [next_end, next_exponential] = std::move(next_result.value());
-						exponentials = ast::make_ast(ast::exp{std::move(exponentials), std::move(next_exponential)});
+						exponentials = ast::make_node(ast::exp{std::move(exponentials), std::move(next_exponential)});
 						it = next_end;
 					} else {
 						return tl::unexpected{"expected power"s};
@@ -146,9 +176,9 @@ namespace gynjo {
 					auto [next_end, next_factor] = std::move(next_result.value());
 					it = next_end;
 					if (multiply) {
-						factors = ast::make_ast(ast::mul{std::move(factors), std::move(next_factor)});
+						factors = ast::make_node(ast::mul{std::move(factors), std::move(next_factor)});
 					} else {
-						factors = ast::make_ast(ast::div{std::move(factors), std::move(next_factor)});
+						factors = ast::make_node(ast::div{std::move(factors), std::move(next_factor)});
 					}
 				}
 				return std::pair{it, std::move(factors)};
@@ -164,7 +194,7 @@ namespace gynjo {
 				[&](tok::minus) {
 					return parse_factors(env, begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 						auto [factor_end, factor] = std::move(result);
-						return std::pair{factor_end, make_ast(ast::neg{std::move(factor)})};
+						return std::pair{factor_end, make_node(ast::neg{std::move(factor)})};
 					});
 				},
 				// Unary plus (ignored)
@@ -184,9 +214,9 @@ namespace gynjo {
 						auto [next_end, next_term] = std::move(next_result.value());
 						it = next_end;
 						if (std::holds_alternative<tok::plus>(token)) {
-							terms = ast::make_ast(ast::add{std::move(terms), std::move(next_term)});
+							terms = ast::make_node(ast::add{std::move(terms), std::move(next_term)});
 						} else {
-							terms = ast::make_ast(ast::sub{std::move(terms), std::move(next_term)});
+							terms = ast::make_node(ast::sub{std::move(terms), std::move(next_term)});
 						}
 					} else {
 						return tl::unexpected{"expected term"s};
@@ -209,7 +239,7 @@ namespace gynjo {
 						return parse_terms(env, eq_begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> rhs_result) -> subparse_result {
 							// Assemble assignment from symbol and RHS.
 							auto [rhs_end, rhs] = std::move(rhs_result);
-							return std::pair{rhs_end, make_ast(ast::assign{symbol, std::move(rhs)})};
+							return std::pair{rhs_end, make_node(ast::assign{symbol, std::move(rhs)})};
 						});
 					} else {
 						return tl::unexpected{"expected '='"s};

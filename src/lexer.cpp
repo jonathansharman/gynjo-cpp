@@ -21,6 +21,7 @@ namespace gynjo {
 		static std::vector<std::pair<std::regex, match_to_token>> map{//
 			{std::regex{R"...(=)..."}, [](std::smatch const&) { return tok::eq{}; }},
 			{std::regex{R"...(\+)..."}, [](std::smatch const&) { return tok::plus{}; }},
+			{std::regex{R"...(->)..."}, [](std::smatch const&) { return tok::arrow{}; }},
 			{std::regex{R"...(-)..."}, [](std::smatch const&) { return tok::minus{}; }},
 			{std::regex{R"...(\*\*)..."}, [](std::smatch const&) { return tok::exp{}; }},
 			{std::regex{R"...(\*)..."}, [](std::smatch const&) { return tok::mul{}; }},
@@ -30,7 +31,7 @@ namespace gynjo {
 			{std::regex{R"...(\))..."}, [](std::smatch const&) { return tok::rht{}; }},
 			{std::regex{R"...(,)..."}, [](std::smatch const&) { return tok::com{}; }},
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)..."}, [](std::smatch const& m) { return tok::num{m.str()}; }},
-			{std::regex{R"...([a-zA-Z]+)..."}, [](std::smatch const& m) { return tok::sym{m.str()}; }},
+			{std::regex{R"...([a-zA-Z_]+)..."}, [](std::smatch const& m) { return tok::sym{m.str()}; }},
 			{std::regex{R"...(\s+)..."}, [](std::smatch const&) { return std::nullopt; }}};
 
 		std::vector<tok::token> result;
