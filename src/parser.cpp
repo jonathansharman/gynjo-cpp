@@ -102,7 +102,9 @@ namespace gynjo {
 		auto parse_cluster(environment& env, token_it begin, token_it end) -> subparse_result {
 			return parse_value(env, begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
 				auto [it, first] = std::move(result);
-				std::vector<std::pair<ast::cluster::connector, ast::ptr>> rest;
+				std::vector<ast::ptr> items;
+				items.push_back(std::move(first));
+				std::vector<ast::cluster::connector> connectors;
 				while (it != end) {
 					// The following match determines three things:
 					//   1) The iterator offset to the start of the next factor
@@ -139,14 +141,15 @@ namespace gynjo {
 					// Got another cluster item.
 					auto [next_end, next_item] = std::move(next_result.value());
 					it = next_end;
-					rest.emplace_back(connector, std::move(next_item));
+					items.emplace_back(std::move(next_item));
+					connectors.push_back(connector);
 				}
 				return std::pair{it,
-					rest.empty()
-						// Found a single value.
-						? std::move(first)
+					items.size() == 1
+						// Found a single value. Just extract it here.
+						? std::move(items.front())
 						// Found a cluster of values.
-						: make_node(ast::cluster{std::move(first), std::move(rest)})};
+						: make_node(ast::cluster{std::move(items), std::move(connectors)})};
 			});
 		}
 

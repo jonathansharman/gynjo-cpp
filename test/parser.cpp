@@ -12,11 +12,13 @@ TEST_SUITE("parser") {
 	using namespace gynjo;
 
 	TEST_CASE("kitchen sink") {
-		std::vector<std::pair<ast::cluster::connector, ast::ptr>> multiplication;
-		multiplication.emplace_back(ast::cluster::connector::mul,
-			make_node(ast::add{//
-				make_node(ast::node{tok::num{"3"}}),
-				make_node(ast::node{tok::num{"4"}})}));
+		std::vector<ast::ptr> factors;
+		factors.push_back(make_node(ast::tup{//
+			ast::make_node(tok::num{"1"}),
+			ast::make_node(tok::num{"2"})}));
+		factors.push_back(make_node(ast::add{//
+			make_node(ast::node{tok::num{"3"}}),
+			make_node(ast::node{tok::num{"4"}})}));
 		auto const expected = //
 			make_node(ast::assign{
 				tok::sym{"f"},
@@ -24,8 +26,7 @@ TEST_SUITE("parser") {
 					make_node(ast::tup{}),
 					make_node(ast::neg{
 						make_node(ast::cluster{
-							make_node(ast::tup{ast::make_node(tok::num{"1"}), ast::make_node(tok::num{"2"})}),
-							std::move(multiplication) //
+							std::move(factors), {ast::cluster::connector::mul} //
 						}) //
 					}) //
 				}) //

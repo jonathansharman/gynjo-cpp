@@ -53,10 +53,11 @@ namespace gynjo::ast {
 			exp, // Explicit exponentiation
 		};
 
-		ptr first;
-		std::vector<std::pair<connector, ptr>> rest;
+		std::vector<ptr> items;
+		//! Connector i says how item i + 1 is connected to item i.
+		std::vector<connector> connectors;
 	};
-	// Tuple expression.
+	//! Tuple expression.
 	struct tup {
 		std::vector<ptr> elems;
 
@@ -65,7 +66,7 @@ namespace gynjo::ast {
 			(elems.push_back(std::move(args)), ...);
 		}
 	};
-	// Lambda function expression.
+	//! Lambda function expression.
 	struct fun {
 		ptr params;
 		ptr body;
@@ -88,27 +89,29 @@ namespace gynjo::ast {
 			[](neg const& neg) { return fmt::format("(-{})", to_string(*neg.expr)); },
 			[](sub const& sub) { return fmt::format("({} - {})", to_string(*sub.minuend), to_string(*sub.subtrahend)); },
 			[](cluster const& cluster) {
-				std::string result = "(" + to_string(*cluster.first);
-				for (auto const& item : cluster.rest) {
-					switch (item.first) {
+				std::string result = "(";
+				if (!cluster.items.empty()) { result += to_string(*cluster.items.front()); }
+				for (std::size_t i = 0; i < cluster.connectors.size(); ++i) {
+					auto item_string = to_string(*cluster.items[i + 1]);
+					switch (cluster.connectors[i]) {
 						case cluster::connector::adj_paren:
-							result += " (" + to_string(*item.second) + ")";
+							result += " (" + item_string + ")";
 							break;
 						case cluster::connector::adj_nonparen:
-							result += " " + to_string(*item.second);
+							result += " " + item_string;
 							break;
 						case cluster::connector::mul:
-							result += " * " + to_string(*item.second);
+							result += " * " + item_string;
 							break;
 						case cluster::connector::div:
-							result += " / " + to_string(*item.second);
+							result += " / " + item_string;
 							break;
 						case cluster::connector::exp:
-							result += " ^ " + to_string(*item.second);
+							result += " ^ " + item_string;
 							break;
 					}
+					result += ")";
 				}
-				result += ")";
 				return result;
 			},
 			[](fun const& f) { return fmt::format("({} -> {})", to_string(*f.params), to_string(*f.body)); },
@@ -142,11 +145,11 @@ namespace gynjo::ast {
 				return make_node(ast::sub{clone(*sub.minuend), clone(*sub.subtrahend)});
 			},
 			[](cluster const& c) {
-				std::vector<std::pair<cluster::connector, ptr>> rest;
-				for (auto const& item : c.rest) {
-					rest.emplace_back(item.first, clone(*item.second));
+				std::vector<ptr> items;
+				for (auto const& item : c.items) {
+					items.push_back(clone(*item));
 				}
-				return make_node(cluster{clone(*c.first), std::move(rest)});
+				return make_node(cluster{std::move(items), c.connectors});
 			},
 			[](fun const& f) {
 				return make_node(ast::fun{clone(*f.params), clone(*f.body)});

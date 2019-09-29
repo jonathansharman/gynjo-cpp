@@ -177,22 +177,20 @@ namespace gynjo {
 				});
 			},
 			[&](ast::cluster const& cluster_ast) -> eval_result {
-				return eval(env, cluster_ast.first).and_then([&](val::value const& first_val) -> eval_result {
-					std::vector<std::pair<ast::cluster::connector, val::value>> rest_val;
-					for (auto const& item_ast : cluster_ast.rest) {
-						auto item_result = eval(env, item_ast.second);
-						if (item_result.has_value()) {
-							rest_val.emplace_back(item_ast.first, std::move(item_result.value()));
-						} else {
-							return item_result;
-						}
+				std::vector<val::value> items_val;
+				for (auto const& item_ast : cluster_ast.items) {
+					auto item_result = eval(env, item_ast);
+					if (item_result.has_value()) {
+						items_val.push_back(std::move(item_result.value()));
+					} else {
+						return item_result;
 					}
-					// Do parenthesized function applications.
-					// Do exponentiations.
-					// Do non-parenthesized function applications.
-					// Do multiplication and division.
-					return first_val;
-				});
+				}
+				// Do parenthesized function applications.
+				// Do exponentiations.
+				// Do non-parenthesized function applications.
+				// Do multiplication and division.
+				return std::move(items_val.front());
 			},
 			[&](ast::fun const& f_ast) -> eval_result {
 				std::vector<val::fun::param> params_val;
