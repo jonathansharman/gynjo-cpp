@@ -36,97 +36,59 @@ namespace gynjo {
 		}
 	}
 
-	auto product(environment& env, ast::ptr const& factor1, ast::ptr const& factor2) -> eval_result {
-		return eval_binary(env, factor1, factor2, [](val::value const& a, val::value const& b) -> eval_result {
-			return match2(
-				a,
-				b,
-				[&](val::num const& factor1, val::num const& factor2) -> eval_result {
-					return val::num{factor1 * factor2};
-				},
-				[](auto const& factor1, auto const& factor2) -> eval_result {
-					return tl::unexpected{
-						fmt::format("cannot multiply {} and {}", val::to_string(factor1), val::to_string(factor2))};
-				});
-		});
+	auto product(val::value const& dividend, val::value const& divisor) -> eval_result {
+		return match2(
+			dividend,
+			divisor,
+			[&](val::num const& factor1, val::num const& factor2) -> eval_result { return val::num{factor1 * factor2}; },
+			[](auto const& factor1, auto const& factor2) -> eval_result {
+				return tl::unexpected{
+					fmt::format("cannot multiply {} and {}", val::to_string(factor1), val::to_string(factor2))};
+			});
 	}
 
-	auto quotient(environment& env, ast::ptr const& dividend, ast::ptr const& divisor) -> eval_result {
-		return eval_binary(env, dividend, divisor, [](val::value const& a, val::value const& b) -> eval_result {
-			return match2(
-				a,
-				b,
-				[&](val::num const& dividend, val::num const& divisor) -> eval_result {
-					if (divisor == 0) { return tl::unexpected{"division by zero"s}; }
-					return val::num{dividend / divisor};
-				},
-				[](auto const& dividend, auto const& divisor) -> eval_result {
-					return tl::unexpected{
-						fmt::format("cannot divide {} and {}", val::to_string(dividend), val::to_string(divisor))};
-				});
-		});
+	auto quotient(val::value const& dividend, val::value const& divisor) -> eval_result {
+		return match2(
+			dividend,
+			divisor,
+			[&](val::num const& dividend, val::num const& divisor) -> eval_result {
+				if (divisor == 0) { return tl::unexpected{"division by zero"s}; }
+				return val::num{dividend / divisor};
+			},
+			[](auto const& dividend, auto const& divisor) -> eval_result {
+				return tl::unexpected{
+					fmt::format("cannot divide {} and {}", val::to_string(dividend), val::to_string(divisor))};
+			});
 	}
 
-	auto power(environment& env, ast::ptr const& base, ast::ptr const& exponent) -> eval_result {
-		return eval_binary(env, base, exponent, [](val::value const& a, val::value const& b) -> eval_result {
-			return match2(
-				a,
-				b,
-				[&](val::num const& base, val::num const& exponent) -> eval_result {
-					return val::num{boost::multiprecision::pow(base, exponent)};
-				},
-				[](auto const& base, auto const& exponent) -> eval_result {
-					return tl::unexpected{
-						fmt::format("cannot raise {} to the power of {}", val::to_string(base), val::to_string(exponent))};
-				});
-		});
+	auto power(val::value const& base, val::value const& exponent) -> eval_result {
+		return match2(
+			base,
+			exponent,
+			[&](val::num const& base, val::num const& exponent) -> eval_result {
+				return val::num{boost::multiprecision::pow(base, exponent)};
+			},
+			[](auto const& base, auto const& exponent) -> eval_result {
+				return tl::unexpected{
+					fmt::format("cannot raise {} to the power of {}", val::to_string(base), val::to_string(exponent))};
+			});
 	}
 
-	auto application(environment& env, ast::ptr const& f, ast::ptr const& arg) -> eval_result {
-		// Evaluate the function and ensure it is a function value.
-		return eval(env, f).and_then([&](val::value result) {
-			return match(
-				result,
-				[&](val::fun const& f) {
-					// Evaluate the argument.
-					return eval(env, arg).and_then([&](val::value arg) {
-						return match(
-							arg,
-							[&](val::tup const& tup) -> eval_result {
-								// Ensure correct number of arguments.
-								if (tup.elems.size() != f.params.size()) {
-									return tl::unexpected{
-										fmt::format("attempted to call {}-ary function with {} argument{}.",
-											f.params.size(),
-											tup.elems.size(),
-											tup.elems.size() == 1 ? "" : "s")};
-								}
-								// Assign arguments to parameters within a local environment.
-								auto f_env = env;
-								for (std::size_t i = 0; i < tup.elems.size(); ++i) {
-									f_env[f.params[i].name] = *tup.elems[i];
-								}
-								// Evaluate function body within the local environment.
-								return eval(f_env, f.body);
-							},
-							[&](auto const& arg) -> eval_result {
-								// Single-argument call.
-								if (f.params.size() != 1) {
-									return tl::unexpected{
-										fmt::format("attempted to call {}-ary function with 1 argument.", f.params.size())};
-								}
-								// Assign argument to parameter within a local environment.
-								auto f_env = env;
-								f_env[f.params.front().name] = arg;
-								// Evaluate function body within the local environment.
-								return eval(f_env, f.body);
-							});
-					});
-				},
-				[](auto const& val) -> eval_result {
-					return tl::unexpected{fmt::format("attemped to apply {} as a function", val::to_string(val))};
-				});
-		});
+	auto application(environment& env, val::fun const& f, val::tup const& arg) -> eval_result {
+		// Ensure correct number of arguments.
+		if (arg.elems.size() != f.params.size()) {
+			return tl::unexpected{fmt::format("attempted to call {}-ary function with {} argument{}.",
+				f.params.size(),
+				arg.elems.size(),
+				arg.elems.size() == 1 ? "" : "s")};
+		}
+		// Assign arguments to parameters within a local environment.
+		auto f_env = env;
+		for (std::size_t i = 0; i < arg.elems.size(); ++i) {
+			f_env[f.params[i].name] = *arg.elems[i];
+		}
+		// Evaluate function body within the local environment.
+		return eval(f_env, f.body);
 	}
 
 	auto eval(environment& env, ast::ptr const& ast) -> eval_result {
@@ -176,21 +138,104 @@ namespace gynjo {
 						});
 				});
 			},
-			[&](ast::cluster const& cluster_ast) -> eval_result {
-				std::vector<val::value> items_val;
-				for (auto const& item_ast : cluster_ast.items) {
+			[&](ast::cluster const& cluster) -> eval_result {
+				std::vector<val::value> items;
+				for (auto const& item_ast : cluster.items) {
 					auto item_result = eval(env, item_ast);
 					if (item_result.has_value()) {
-						items_val.push_back(std::move(item_result.value()));
+						items.push_back(std::move(item_result.value()));
 					} else {
 						return item_result;
 					}
 				}
+				auto connectors = cluster.connectors;
+
+				// Common functionality of the two function application evaluation loop bodies.
+				// Returns an error string if something went wrong or nullopt otherwise.
+				auto do_application = [&](std::size_t& i) -> std::optional<std::string> {
+					auto const& f = items[i];
+					auto const& arg = items[i + 1];
+					if (std::holds_alternative<val::fun>(f)) {
+						auto result = std::holds_alternative<val::tup>(arg)
+							// Argument is already a tuple.
+							? application(env, std::get<val::fun>(f), std::get<val::tup>(arg))
+							// Wrap argument in a tuple.
+							: application(env, std::get<val::fun>(f), val::tup{make_value(arg)});
+						if (result.has_value()) {
+							items[i] = std::move(result.value());
+							items.erase(items.begin() + i + 1);
+							connectors.erase(connectors.begin() + i);
+						} else {
+							return result.error();
+						}
+					} else {
+						++i;
+					}
+					return std::nullopt;
+				};
+
 				// Do parenthesized function applications.
+				for (std::size_t i = 0; i < connectors.size();) {
+					if (connectors[i] == ast::cluster::connector::adj_paren) {
+						if (auto error = do_application(i)) { return tl::unexpected{error.value()}; };
+					} else {
+						++i;
+					}
+				}
 				// Do exponentiations.
+				for (std::size_t i = 0; i < connectors.size();) {
+					if (connectors[i] == ast::cluster::connector::exp) {
+						auto const& base = items[i];
+						auto const& exp = items[i + 1];
+						auto result = power(base, exp);
+						if (result.has_value()) {
+							items[i] = std::move(result.value());
+							items.erase(items.begin() + i + 1);
+							connectors.erase(connectors.begin() + i);
+						} else {
+							return result;
+						}
+					} else {
+						++i;
+					}
+				}
 				// Do non-parenthesized function applications.
+				for (std::size_t i = 0; i < connectors.size();) {
+					if (connectors[i] == ast::cluster::connector::adj_nonparen) {
+						if (auto error = do_application(i)) { return tl::unexpected{error.value()}; };
+					} else {
+						++i;
+					}
+				}
 				// Do multiplication and division.
-				return std::move(items_val.front());
+				for (std::size_t i = 0; i < connectors.size(); ++i) {
+					if (connectors[i] == ast::cluster::connector::mul) {
+						auto const& factor1 = items[i];
+						auto const& factor2 = items[i + 1];
+						auto result = product(factor1, factor2);
+						if (result.has_value()) {
+							items[i] = std::move(result.value());
+							items.erase(items.begin() + i + 1);
+							connectors.erase(connectors.begin() + i);
+						} else {
+							return result;
+						}
+					} else {
+						// Division is the only option left.
+						auto const& dividend = items[i];
+						auto const& divisor = items[i + 1];
+						auto result = quotient(dividend, divisor);
+						if (result.has_value()) {
+							items[i] = std::move(result.value());
+							items.erase(items.begin() + i + 1);
+							connectors.erase(connectors.begin() + i);
+						} else {
+							return result;
+						}
+					}
+				}
+				// At this point, all values should be folded into the front of items.
+				return items.front();
 			},
 			[&](ast::fun const& f_ast) -> eval_result {
 				std::vector<val::fun::param> params_val;

@@ -56,7 +56,7 @@ namespace gynjo::val {
 
 		template <typename... Args>
 		tup(Args&&... args) {
-			(elems.push_back(std::forward<Args>(args)), ...);
+			(elems.push_back(std::move(args)), ...);
 		}
 
 		tup(tup const& that) {
