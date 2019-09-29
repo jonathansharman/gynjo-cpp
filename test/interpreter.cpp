@@ -62,11 +62,6 @@ TEST_SUITE("interpreter") {
 			auto const actual = eval(env, "4inc(2)^2");
 			CHECK(expected == actual.value());
 		}
-		SUBCASE("function to a power") {
-			val::value const expected = val::num{36};
-			auto const actual = eval(env, "4inc^2(2)");
-			CHECK(expected == actual.value());
-		}
 		SUBCASE("exponentiation > non-parenthesized function call") {
 			val::value const expected = val::num{20};
 			auto const actual = eval(env, "4inc 2^2");
