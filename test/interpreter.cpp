@@ -27,7 +27,7 @@ TEST_SUITE("interpreter") {
 		CHECK(expected == actual.value());
 	}
 
-	TEST_CASE("assignment persists") {
+	TEST_CASE("basic assignment") {
 		environment env{};
 		val::value const expected = val::num{42};
 		auto const actual = eval(env, "x = 42");
@@ -75,5 +75,22 @@ TEST_SUITE("interpreter") {
 		eval(env, "apply = (f, a) -> f(a)");
 		auto const actual = eval(env, "apply(a -> a, 42)");
 		CHECK(expected == actual.value());
+	}
+
+	TEST_CASE("curried function") {
+		environment env{};
+		val::value const expected = val::num{3};
+		eval(env, "sum = a -> b -> a + b");
+		auto const actual = eval(env, "sum 1 2");
+		CHECK(expected == actual.value());
+	}
+
+	TEST_CASE("environment doesn't persist between function chains") {
+		environment env{};
+		eval(env, "sum = a -> b -> a + b");
+		eval(env, "get_a = () -> a");
+		auto const result = eval(env, "sum (1) (2) get_a ()");
+		// a should be undefined.
+		CHECK(!result.has_value());
 	}
 }

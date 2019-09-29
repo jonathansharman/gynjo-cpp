@@ -82,13 +82,12 @@ namespace gynjo {
 				arg.elems.size(),
 				arg.elems.size() == 1 ? "" : "s")};
 		}
-		// Assign arguments to parameters within a local environment.
-		auto f_env = env;
+		// Assign arguments to parameters within current environment.
 		for (std::size_t i = 0; i < arg.elems.size(); ++i) {
-			f_env[f.params[i].name] = *arg.elems[i];
+			env[f.params[i].name] = *arg.elems[i];
 		}
 		// Evaluate function body within the local environment.
-		return eval(f_env, f.body);
+		return eval(env, f.body);
 	}
 
 	auto eval(environment& env, ast::ptr const& ast) -> eval_result {
@@ -150,38 +149,38 @@ namespace gynjo {
 				}
 				auto connectors = cluster.connectors;
 
-				// Common functionality of the two function application evaluation loop bodies.
+				// Common functionality of the two function application evaluation loops.
 				// Returns an error string if something went wrong or nullopt otherwise.
-				auto do_application = [&](std::size_t& i) -> std::optional<std::string> {
-					auto const& f = items[i];
-					auto const& arg = items[i + 1];
-					if (std::holds_alternative<val::fun>(f)) {
-						auto result = std::holds_alternative<val::tup>(arg)
-							// Argument is already a tuple.
-							? application(env, std::get<val::fun>(f), std::get<val::tup>(arg))
-							// Wrap argument in a tuple.
-							: application(env, std::get<val::fun>(f), val::tup{make_value(arg)});
-						if (result.has_value()) {
-							items[i] = std::move(result.value());
-							items.erase(items.begin() + i + 1);
-							connectors.erase(connectors.begin() + i);
-						} else {
-							return result.error();
+				auto do_applications = [&](ast::cluster::connector connector) -> std::optional<std::string> {
+					for (std::size_t i = 0; i < connectors.size(); ++i) {
+						// Create a copy of the current environment for the next chain of function applications.
+						auto chain_env = env;
+						while (i < connectors.size() //
+							&& connectors[i] == connector //
+							&& std::holds_alternative<val::fun>(items[i])) //
+						{
+							auto const& f = items[i];
+							auto const& arg = items[i + 1];
+							// Apply function.
+							auto result = std::holds_alternative<val::tup>(arg)
+								// Argument is already a tuple.
+								? application(chain_env, std::get<val::fun>(f), std::get<val::tup>(arg))
+								// Wrap argument in a tuple.
+								: application(chain_env, std::get<val::fun>(f), val::tup{make_value(arg)});
+							if (result.has_value()) {
+								items[i] = std::move(result.value());
+								items.erase(items.begin() + i + 1);
+								connectors.erase(connectors.begin() + i);
+							} else {
+								return result.error();
+							}
 						}
-					} else {
-						++i;
 					}
 					return std::nullopt;
 				};
 
 				// Do parenthesized function applications.
-				for (std::size_t i = 0; i < connectors.size();) {
-					if (connectors[i] == ast::cluster::connector::adj_paren) {
-						if (auto error = do_application(i)) { return tl::unexpected{error.value()}; };
-					} else {
-						++i;
-					}
-				}
+				if (auto error = do_applications(ast::cluster::connector::adj_paren)) { return tl::unexpected{*error}; }
 				// Do exponentiations.
 				for (std::size_t i = 0; i < connectors.size();) {
 					if (connectors[i] == ast::cluster::connector::exp) {
@@ -200,12 +199,8 @@ namespace gynjo {
 					}
 				}
 				// Do non-parenthesized function applications.
-				for (std::size_t i = 0; i < connectors.size();) {
-					if (connectors[i] == ast::cluster::connector::adj_nonparen) {
-						if (auto error = do_application(i)) { return tl::unexpected{error.value()}; };
-					} else {
-						++i;
-					}
+				if (auto error = do_applications(ast::cluster::connector::adj_nonparen)) {
+					return tl::unexpected{*error};
 				}
 				// Do multiplication and division.
 				for (std::size_t i = 0; i < connectors.size();) {
