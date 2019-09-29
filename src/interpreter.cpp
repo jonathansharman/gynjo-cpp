@@ -208,29 +208,37 @@ namespace gynjo {
 					}
 				}
 				// Do multiplication and division.
-				for (std::size_t i = 0; i < connectors.size(); ++i) {
-					if (connectors[i] == ast::cluster::connector::mul) {
-						auto const& factor1 = items[i];
-						auto const& factor2 = items[i + 1];
-						auto result = product(factor1, factor2);
-						if (result.has_value()) {
-							items[i] = std::move(result.value());
-							items.erase(items.begin() + i + 1);
-							connectors.erase(connectors.begin() + i);
-						} else {
-							return result;
+				for (std::size_t i = 0; i < connectors.size();) {
+					switch (connectors[i]) {
+						case ast::cluster::connector::adj_paren:
+							[[fallthrough]];
+						case ast::cluster::connector::adj_nonparen:
+							[[fallthrough]];
+						case ast::cluster::connector::mul: {
+							auto const& factor1 = items[i];
+							auto const& factor2 = items[i + 1];
+							auto result = product(factor1, factor2);
+							if (result.has_value()) {
+								items[i] = std::move(result.value());
+								items.erase(items.begin() + i + 1);
+								connectors.erase(connectors.begin() + i);
+							} else {
+								return result;
+							}
+							break;
 						}
-					} else {
-						// Division is the only option left.
-						auto const& dividend = items[i];
-						auto const& divisor = items[i + 1];
-						auto result = quotient(dividend, divisor);
-						if (result.has_value()) {
-							items[i] = std::move(result.value());
-							items.erase(items.begin() + i + 1);
-							connectors.erase(connectors.begin() + i);
-						} else {
-							return result;
+						default: {
+							// Division is the only remaining possibility.
+							auto const& dividend = items[i];
+							auto const& divisor = items[i + 1];
+							auto result = quotient(dividend, divisor);
+							if (result.has_value()) {
+								items[i] = std::move(result.value());
+								items.erase(items.begin() + i + 1);
+								connectors.erase(connectors.begin() + i);
+							} else {
+								return result;
+							}
 						}
 					}
 				}
