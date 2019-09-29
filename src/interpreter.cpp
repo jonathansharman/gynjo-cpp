@@ -187,6 +187,10 @@ namespace gynjo {
 							return item_result;
 						}
 					}
+					// Do parenthesized function applications.
+					// Do exponentiations.
+					// Do non-parenthesized function applications.
+					// Do multiplication and division.
 					return first_val;
 				});
 			},

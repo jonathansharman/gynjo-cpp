@@ -54,14 +54,24 @@ TEST_SUITE("interpreter") {
 		CHECK(expected == actual.value());
 	}
 
-	TEST_CASE("order of operations with function application and implicit multiplication") {
+	TEST_CASE("order of operations") {
 		environment env{};
-		eval(env, "a = 2");
 		eval(env, "inc = a -> a + 1");
-		eval(env, "b = 3");
-		val::value const expected = val::num{8};
-		auto const actual = eval(env, "a inc b");
-		CHECK(expected == actual.value());
+		SUBCASE("parenthesized function call > exponentiation") {
+			val::value const expected = val::num{36};
+			auto const actual = eval(env, "4inc(2)^2");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("function to a power") {
+			val::value const expected = val::num{36};
+			auto const actual = eval(env, "4inc^2(2)");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("exponentiation > non-parenthesized function call") {
+			val::value const expected = val::num{20};
+			auto const actual = eval(env, "4inc 2^2");
+			CHECK(expected == actual.value());
+		}
 	}
 
 	TEST_CASE("higher-order functions") {
