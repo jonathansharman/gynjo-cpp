@@ -17,6 +17,7 @@ namespace gynjo {
 
 		using match_to_token = std::function<std::optional<tok::token>(std::smatch const&)>;
 		static std::vector<std::pair<std::regex, match_to_token>> map{//
+			{std::regex{R"...(//.*)..."}, [](std::smatch const&) { return std::nullopt; }},
 			{std::regex{R"...(=)..."}, [](std::smatch const&) { return tok::eq{}; }},
 			{std::regex{R"...(\+)..."}, [](std::smatch const&) { return tok::plus{}; }},
 			{std::regex{R"...(->)..."}, [](std::smatch const&) { return tok::arrow{}; }},

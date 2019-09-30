@@ -32,7 +32,7 @@ TEST_SUITE("lexer") {
 			tok::num{"0.1"},
 			tok::com{}};
 
-		auto const actual = lex("5*( 1+ \t -->2)^***  =/ .1 0 0.1,");
+		auto const actual = lex("5*( 1+ \t -->2)^***  =/ .1 0 0.1,// This is a line comment.");
 
 		CHECK(expected == actual.value());
 	}
