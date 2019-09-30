@@ -1,8 +1,6 @@
 //! @file
 //! @copyright See <a href="LICENSE.txt">LICENSE.txt</a>.
 
-#pragma once
-
 #include "lexer.hpp"
 
 #ifndef _DEBUG

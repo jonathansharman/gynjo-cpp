@@ -1,8 +1,6 @@
 //! @file
 //! @copyright See <a href="LICENSE.txt">LICENSE.txt</a>.
 
-#pragma once
-
 #include "interpreter.hpp"
 
 #ifndef _DEBUG
@@ -92,5 +90,23 @@ TEST_SUITE("interpreter") {
 		auto const result = eval(env, "sum (1) (2) get_a ()");
 		// a should be undefined.
 		CHECK(!result.has_value());
+	}
+
+	TEST_CASE("chained application with and without parentheses") {
+		environment env{};
+		val::value const expected = val::num{3};
+		eval(env, "sum = a -> b -> a + b");
+		eval(env, "inc = a -> a + 1");
+		auto const actual = eval(env, "sum (1) 2");
+		CHECK(expected == actual.value());
+	}
+
+	TEST_CASE("chained application does not pollute applications higher in the call chain") {
+		environment env{};
+		val::value const expected = val::num{8};
+		eval(env, "sum = a -> b -> a + b");
+		eval(env, "inc = b -> b + 1");
+		auto const actual = eval(env, "sum (inc 5) 2");
+		CHECK(expected == actual.value());
 	}
 }

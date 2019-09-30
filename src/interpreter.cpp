@@ -1,11 +1,10 @@
 //! @file
 //! @copyright See <a href="LICENSE.txt">LICENSE.txt</a>.
 
-#pragma once
-
 #include "interpreter.hpp"
 
 #include "ast.hpp"
+#include "environment.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "visitation.hpp"
@@ -74,7 +73,7 @@ namespace gynjo {
 			});
 	}
 
-	auto application(environment& env, val::fun const& f, val::tup const& arg) -> eval_result {
+	auto application(val::closure const& f, val::tup const& arg) -> eval_result {
 		// Ensure correct number of arguments.
 		if (arg.elems.size() != f.params.size()) {
 			return tl::unexpected{fmt::format("attempted to call {}-ary function with {} argument{}.",
@@ -82,12 +81,13 @@ namespace gynjo {
 				arg.elems.size(),
 				arg.elems.size() == 1 ? "" : "s")};
 		}
-		// Assign arguments to parameters within current environment.
+		// Assign arguments to parameters within a copy of the closure's environment.
+		auto app_env = *f.env;
 		for (std::size_t i = 0; i < arg.elems.size(); ++i) {
-			env[f.params[i].name] = *arg.elems[i];
+			app_env.vars[f.params[i].name] = *arg.elems[i];
 		}
-		// Evaluate function body within the local environment.
-		return eval(env, f.body);
+		// Evaluate function body within the application environment.
+		return eval(app_env, f.body);
 	}
 
 	auto eval(environment& env, ast::ptr const& ast) -> eval_result {
@@ -95,7 +95,7 @@ namespace gynjo {
 			*ast,
 			[&](ast::assign const& assign) {
 				return eval(env, assign.rhs).and_then([&](val::value expr_value) -> eval_result {
-					env[assign.symbol.name] = expr_value;
+					env.vars[assign.symbol.name] = expr_value;
 					return expr_value;
 				});
 			},
@@ -152,21 +152,16 @@ namespace gynjo {
 				// Common functionality of the two function application evaluation loops.
 				// Returns an error string if something went wrong or nullopt otherwise.
 				auto do_applications = [&](ast::cluster::connector connector) -> std::optional<std::string> {
-					for (std::size_t i = 0; i < connectors.size(); ++i) {
-						// Create a copy of the current environment for the next chain of function applications.
-						auto chain_env = env;
-						while (i < connectors.size() //
-							&& connectors[i] == connector //
-							&& std::holds_alternative<val::fun>(items[i])) //
-						{
+					for (std::size_t i = 0; i < connectors.size();) {
+						if (connectors[i] == connector && std::holds_alternative<val::closure>(items[i])) {
 							auto const& f = items[i];
 							auto const& arg = items[i + 1];
 							// Apply function.
 							auto result = std::holds_alternative<val::tup>(arg)
 								// Argument is already a tuple.
-								? application(chain_env, std::get<val::fun>(f), std::get<val::tup>(arg))
+								? application(std::get<val::closure>(f), std::get<val::tup>(arg))
 								// Wrap argument in a tuple.
-								: application(chain_env, std::get<val::fun>(f), val::tup{make_value(arg)});
+								: application(std::get<val::closure>(f), val::tup{make_value(arg)});
 							if (result.has_value()) {
 								items[i] = std::move(result.value());
 								items.erase(items.begin() + i + 1);
@@ -174,6 +169,8 @@ namespace gynjo {
 							} else {
 								return result.error();
 							}
+						} else {
+							++i;
 						}
 					}
 					return std::nullopt;
@@ -240,13 +237,13 @@ namespace gynjo {
 				// At this point, all values should be folded into the front of items.
 				return items.front();
 			},
-			[&](ast::fun const& f_ast) -> eval_result {
-				std::vector<val::fun::param> params_val;
+			[&](ast::lambda const& f) -> eval_result {
+				std::vector<val::closure::param> params_val;
 				// The parser guarantees that f_ast.params is tuple of symbols.
-				for (auto const& param_ast : std::get<ast::tup>(*f_ast.params).elems) {
-					params_val.push_back(val::fun::param{std::get<tok::sym>(*param_ast).name});
+				for (auto const& param_ast : std::get<ast::tup>(*f.params).elems) {
+					params_val.push_back(val::closure::param{std::get<tok::sym>(*param_ast).name});
 				}
-				return val::fun{std::move(params_val), clone(*f_ast.body)};
+				return val::closure{std::move(params_val), clone(*f.body), std::make_unique<environment>(env)};
 			},
 			[&](ast::tup const& tup_ast) -> eval_result {
 				val::tup tup_val;
@@ -262,7 +259,7 @@ namespace gynjo {
 			},
 			[](tok::num const& num) -> eval_result { return val::num{num.rep}; },
 			[&](tok::sym const& sym) -> eval_result {
-				if (auto it = env.find(sym.name); it != env.end()) {
+				if (auto it = env.vars.find(sym.name); it != env.vars.end()) {
 					return it->second;
 				} else {
 					return tl::unexpected{fmt::format("'{}' is not defined", sym.name)};
@@ -273,7 +270,7 @@ namespace gynjo {
 	auto eval(environment& env, std::string const& input) -> eval_result {
 		lex_result const lex_result = lex(input);
 		if (lex_result.has_value()) {
-			parse_result const parse_result = parse(env, lex_result.value());
+			parse_result const parse_result = parse(lex_result.value());
 			if (parse_result.has_value()) {
 				return eval(env, parse_result.value());
 			} else {

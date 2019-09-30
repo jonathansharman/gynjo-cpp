@@ -22,7 +22,7 @@ TEST_SUITE("parser") {
 		auto const expected = //
 			make_node(ast::assign{
 				tok::sym{"f"},
-				make_node(ast::fun{
+				make_node(ast::lambda{
 					make_node(ast::tup{}),
 					make_node(ast::neg{
 						make_node(ast::cluster{
@@ -32,26 +32,24 @@ TEST_SUITE("parser") {
 				}) //
 			});
 
-		environment env;
-		auto const actual = parse(env,
-			std::vector<tok::token>{//
-				tok::sym{"f"},
-				tok::eq{},
-				tok::lft{},
-				tok::rht{},
-				tok::arrow{},
-				tok::minus{},
-				tok::lft{},
-				tok::num{"1"},
-				tok::com{},
-				tok::num{"2"},
-				tok::rht{},
-				tok::mul{},
-				tok::lft{},
-				tok::num{"3"},
-				tok::plus{},
-				tok::num{"4"},
-				tok::rht{}});
+		auto const actual = parse(std::vector<tok::token>{//
+			tok::sym{"f"},
+			tok::eq{},
+			tok::lft{},
+			tok::rht{},
+			tok::arrow{},
+			tok::minus{},
+			tok::lft{},
+			tok::num{"1"},
+			tok::com{},
+			tok::num{"2"},
+			tok::rht{},
+			tok::mul{},
+			tok::lft{},
+			tok::num{"3"},
+			tok::plus{},
+			tok::num{"4"},
+			tok::rht{}});
 
 		CHECK(to_string(*expected) == to_string(*actual.value()));
 	}

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ast.hpp"
 #include "tokens.hpp"
 #include "visitation.hpp"
 
@@ -10,112 +11,73 @@
 
 #include <memory>
 
-namespace gynjo::val {
-	//! Floating-point number.
-	using num = boost::multiprecision::cpp_dec_float_100;
+namespace gynjo {
+	struct environment;
 
-	//! Function.
-	struct fun {
-		//! Function parameter.
-		struct param {
-			std::string name;
-			bool operator==(param const&) const = default;
+	namespace val {
+		//! Floating-point number.
+		using num = boost::multiprecision::cpp_dec_float_100;
+
+		//! Union type of all Gynjo value types.
+		using value = std::variant<num, struct tup, struct closure>;
+
+		//! A function along with the environment in which it was evaluated.
+		struct closure {
+			//! Function parameter.
+			struct param {
+				std::string name;
+				bool operator==(param const&) const = default;
+			};
+
+			std::vector<param> params;
+			ast::ptr body;
+			std::unique_ptr<environment> env;
+
+			closure(std::vector<param> params, ast::ptr body, std::unique_ptr<environment> env);
+
+			closure(closure const& that);
+			closure(closure&&) = default;
+
+			~closure();
+
+			closure& operator=(closure const& that);
+			closure& operator=(closure&&) = default;
+
+			//! Because of the halting problem, this just does shallow equality checking on the body.
+			bool operator==(closure const& other) const = default;
 		};
-		std::vector<param> params;
-		ast::ptr body;
 
-		fun(std::vector<param> params, ast::ptr body) : params{std::move(params)}, body{std::move(body)} {}
+		//! Unique pointer to a Gynjo value.
+		using ptr = std::unique_ptr<value>;
 
-		fun(fun const& other) : params{other.params}, body{clone(*other.body)} {}
-		fun(fun&& other) = default;
+		//! Convenience function for creating a Gynjo value pointer from a value @p val.
+		template <typename T>
+		auto make_value(T&& val) -> ptr;
 
-		fun& operator=(fun const& other) {
-			params = other.params;
-			body = clone(*other.body);
-			return *this;
-		}
-		fun& operator=(fun&& other) = default;
+		//! Tuple of Gynjo values.
+		struct tup {
+			std::vector<ptr> elems;
 
-		//! Because of the halting problem, this just does default, shallow equality checking on the body.
-		bool operator==(fun const& other) const = default;
-	};
-
-	//! Union type of all Gynjo value types.
-	using value = std::variant<num, struct tup, fun>;
-
-	//! Unique pointer to a Gynjo value.
-	using ptr = std::unique_ptr<value>;
-
-	//! Convenience function for creating a Gynjo value pointer from a value @p val.
-	template <typename T>
-	auto make_value(T&& val) -> ptr;
-
-	//! Tuple of Gynjo values.
-	struct tup {
-		std::vector<ptr> elems;
-
-		template <typename... Args>
-		tup(Args&&... args) {
-			(elems.push_back(std::move(args)), ...);
-		}
-
-		tup(tup const& that) {
-			for (auto& elem : that.elems) {
-				elems.push_back(make_value(*elem));
+			template <typename... Args>
+			tup(Args&&... args) {
+				(elems.push_back(std::move(args)), ...);
 			}
+
+			tup(tup const& that);
+			tup(tup&&) = default;
+
+			tup& operator=(tup const& that);
+			tup& operator=(tup&&) = default;
+
+			bool operator==(tup const& that) const;
+		};
+
+		template <typename T>
+		auto make_value(T&& val) -> ptr {
+			return std::make_unique<gynjo::val::value>(std::forward<T>(val));
 		}
-		tup(tup&&) = default;
 
-		tup& operator=(tup const& that) {
-			elems.clear();
-			for (auto& elem : that.elems) {
-				elems.push_back(make_value(*elem));
-			}
-			return *this;
-		}
-		tup& operator=(tup&& B) = default;
-
-		bool operator==(tup const& that) const {
-			if (elems.size() != that.elems.size()) { return false; }
-			for (std::size_t i = 0; i < elems.size(); ++i) {
-				if (*elems[i] != *that.elems[i]) { return false; }
-			}
-			return true;
-		}
-	};
-
-	template <typename T>
-	auto make_value(T&& val) -> ptr {
-		return std::make_unique<gynjo::val::value>(std::forward<T>(val));
-	}
-
-	//! Converts the value @p val to a user-readable string.
-	inline auto to_string(value const& val) -> std::string {
-		using namespace std::string_literals;
-		return match(
-			val,
-			[](num const& num) { return num.str(); },
-			[](tup const& tup) {
-				std::string result = "(";
-				if (!tup.elems.empty()) {
-					result += to_string(*tup.elems.front());
-					for (auto it = tup.elems.begin() + 1; it != tup.elems.end(); ++it) {
-						result += ", " + to_string(**it);
-					}
-				}
-				result += ")";
-				return result;
-			},
-			[](fun const& f) {
-				std::string result = "(";
-				if (!f.params.empty()) {
-					result += f.params.front().name;
-					for (auto it = f.params.begin() + 1; it != f.params.end(); ++it) {
-						result += ", " + it->name;
-					}
-				}
-				result += ") -> " + ast::to_string(*f.body);
-				return result;
-			});
+		//! Converts the value @p val to a user-readable string.
+		auto to_string(value const& val) -> std::string;
 	}
 }

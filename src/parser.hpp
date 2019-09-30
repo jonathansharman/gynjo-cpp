@@ -16,9 +16,6 @@ namespace gynjo {
 	//! Either an AST pointer or an error message.
 	using parse_result = tl::expected<ast::ptr, std::string>;
 
-	//! A map from symbol names to their Gynjo values.
-	using environment = std::unordered_map<std::string, val::value>;
-
 	//! Parses @p tokens into an AST in the context of @p env, if possible.
-	auto parse(environment& env, std::vector<tok::token> tokens) -> parse_result;
+	auto parse(std::vector<tok::token> tokens) -> parse_result;
 }

@@ -15,7 +15,7 @@
 namespace gynjo::ast {
 	//! Union type of all AST node types.
 	using node =
-		std::variant<struct assign, struct add, struct neg, struct sub, struct cluster, struct fun, struct tup, tok::num, tok::sym>;
+		std::variant<struct assign, struct add, struct neg, struct sub, struct cluster, struct lambda, struct tup, tok::num, tok::sym>;
 
 	//! Unique pointer to an AST node.
 	using ptr = std::unique_ptr<node>;
@@ -66,8 +66,8 @@ namespace gynjo::ast {
 			(elems.push_back(std::move(args)), ...);
 		}
 	};
-	//! Lambda function expression.
-	struct fun {
+	//! Lambda expression.
+	struct lambda {
 		ptr params;
 		ptr body;
 	};
@@ -114,7 +114,7 @@ namespace gynjo::ast {
 				}
 				return result;
 			},
-			[](fun const& f) { return fmt::format("({} -> {})", to_string(*f.params), to_string(*f.body)); },
+			[](lambda const& f) { return fmt::format("({} -> {})", to_string(*f.params), to_string(*f.body)); },
 			[](tup const& tup) {
 				std::string result = "(";
 				if (!tup.elems.empty()) {
@@ -151,8 +151,8 @@ namespace gynjo::ast {
 				}
 				return make_node(cluster{std::move(items), c.connectors});
 			},
-			[](fun const& f) {
-				return make_node(ast::fun{clone(*f.params), clone(*f.body)});
+			[](lambda const& f) {
+				return make_node(ast::lambda{clone(*f.params), clone(*f.body)});
 			},
 			[](tup const& tup) {
 				ast::tup result;

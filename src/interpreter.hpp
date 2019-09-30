@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "environment.hpp"
 #include "parser.hpp"
 #include "values.hpp"
 

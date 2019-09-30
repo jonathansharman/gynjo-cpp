@@ -30,6 +30,9 @@
     <ClCompile Include="test\interpreter.cpp">
       <Filter>test</Filter>
     </ClCompile>
+    <ClCompile Include="src\values.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\visitation.hpp">
@@ -51,6 +54,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\values.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\environment.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
