@@ -74,20 +74,24 @@ namespace gynjo {
 	}
 
 	auto application(val::closure const& f, val::tup const& arg) -> eval_result {
+		// The parser guarantees the parameter list is a tuple.
+		auto const& params = std::get<ast::tup>(*f.lambda.params);
 		// Ensure correct number of arguments.
-		if (arg.elems.size() != f.params.size()) {
+		if (arg.elems.size() != params.elems.size()) {
 			return tl::unexpected{fmt::format("attempted to call {}-ary function with {} argument{}.",
-				f.params.size(),
+				params.elems.size(),
 				arg.elems.size(),
 				arg.elems.size() == 1 ? "" : "s")};
 		}
 		// Assign arguments to parameters within a copy of the closure's environment.
 		auto app_env = *f.env;
 		for (std::size_t i = 0; i < arg.elems.size(); ++i) {
-			app_env.vars[f.params[i].name] = *arg.elems[i];
+			// The parser guarantees that each parameter is a symbol.
+			auto param = std::get<tok::sym>(*params.elems[i]).name;
+			app_env.vars[param] = *arg.elems[i];
 		}
 		// Evaluate function body within the application environment.
-		return eval(app_env, f.body);
+		return eval(app_env, f.lambda.body);
 	}
 
 	auto eval(environment& env, ast::ptr const& ast) -> eval_result {
@@ -238,12 +242,8 @@ namespace gynjo {
 				return items.front();
 			},
 			[&](ast::lambda const& f) -> eval_result {
-				std::vector<val::closure::param> params_val;
-				// The parser guarantees that f_ast.params is tuple of symbols.
-				for (auto const& param_ast : std::get<ast::tup>(*f.params).elems) {
-					params_val.push_back(val::closure::param{std::get<tok::sym>(*param_ast).name});
-				}
-				return val::closure{std::move(params_val), clone(*f.body), std::make_unique<environment>(env)};
+				// When a lambda is evaluated, it forms a closure, which includes a copy of the current environment.
+				return val::closure{f, std::make_unique<environment>(env)};
 			},
 			[&](ast::tup const& tup_ast) -> eval_result {
 				val::tup tup_val;

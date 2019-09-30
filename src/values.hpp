@@ -21,19 +21,15 @@ namespace gynjo {
 		//! Union type of all Gynjo value types.
 		using value = std::variant<num, struct tup, struct closure>;
 
-		//! A function along with the environment in which it was evaluated.
-		struct closure {
-			//! Function parameter.
-			struct param {
-				std::string name;
-				bool operator==(param const&) const = default;
-			};
+		//! Unique pointer to a Gynjo value.
+		using ptr = std::unique_ptr<value>;
 
-			std::vector<param> params;
-			ast::ptr body;
+		//! A function along with the environment in which it was called.
+		struct closure {
+			ast::lambda lambda;
 			std::unique_ptr<environment> env;
 
-			closure(std::vector<param> params, ast::ptr body, std::unique_ptr<environment> env);
+			closure(ast::lambda lambda, std::unique_ptr<environment> env);
 
 			closure(closure const& that);
 			closure(closure&&) = default;
@@ -46,9 +42,6 @@ namespace gynjo {
 			//! Because of the halting problem, this just does shallow equality checking on the body.
 			bool operator==(closure const& other) const = default;
 		};
-
-		//! Unique pointer to a Gynjo value.
-		using ptr = std::unique_ptr<value>;
 
 		//! Convenience function for creating a Gynjo value pointer from a value @p val.
 		template <typename T>

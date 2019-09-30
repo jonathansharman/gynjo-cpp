@@ -55,12 +55,12 @@ TEST_SUITE("interpreter") {
 	TEST_CASE("order of operations") {
 		environment env{};
 		eval(env, "inc = a -> a + 1");
-		SUBCASE("parenthesized function call > exponentiation") {
+		SUBCASE("parenthesized function call before exponentiation") {
 			val::value const expected = val::num{36};
 			auto const actual = eval(env, "4inc(2)^2");
 			CHECK(expected == actual.value());
 		}
-		SUBCASE("exponentiation > non-parenthesized function call") {
+		SUBCASE("exponentiation before non-parenthesized function call") {
 			val::value const expected = val::num{20};
 			auto const actual = eval(env, "4inc 2^2");
 			CHECK(expected == actual.value());

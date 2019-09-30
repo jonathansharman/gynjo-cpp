@@ -6,17 +6,15 @@
 #include "environment.hpp"
 
 namespace gynjo::val {
-	closure::closure(std::vector<param> params, ast::ptr body, std::unique_ptr<environment> env)
-		: params{std::move(params)}, body{std::move(body)}, env{std::move(env)} {}
+	closure::closure(ast::lambda lambda, std::unique_ptr<environment> env)
+		: lambda{std::move(lambda)}, env{std::move(env)} {}
 
-	closure::closure(closure const& that)
-		: params{that.params}, body{clone(*that.body)}, env{std::make_unique<environment>(*that.env)} {}
+	closure::closure(closure const& that) : lambda{that.lambda}, env{std::make_unique<environment>(*that.env)} {}
 
 	closure::~closure() = default;
 
 	closure& closure::operator=(closure const& that) {
-		params = that.params;
-		body = clone(*that.body);
+		lambda = that.lambda;
 		env = std::make_unique<environment>(*that.env);
 		return *this;
 	}
@@ -59,16 +57,6 @@ namespace gynjo::val {
 				result += ")";
 				return result;
 			},
-			[](closure const& f) {
-				std::string result = "(";
-				if (!f.params.empty()) {
-					result += f.params.front().name;
-					for (auto it = f.params.begin() + 1; it != f.params.end(); ++it) {
-						result += ", " + it->name;
-					}
-				}
-				result += ") -> " + ast::to_string(*f.body);
-				return result;
-			});
+			[](closure const& f) { return fmt::format("(closure on {})", ast::to_string(f.lambda)); });
 	}
 }
