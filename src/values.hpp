@@ -52,7 +52,7 @@ namespace gynjo {
 			std::unique_ptr<std::vector<value>> elems;
 
 			tup();
-			tup(std::unique_ptr<std::vector<value>> elems);
+			explicit tup(std::unique_ptr<std::vector<value>> elems);
 
 			tup(tup const& that);
 			tup(tup&&) = default;

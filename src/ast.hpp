@@ -25,7 +25,7 @@ namespace gynjo::ast {
 		tok::sym symbol;
 		ptr rhs;
 
-		assign(tok::sym symbol, ptr rhs);
+		explicit assign(tok::sym symbol, ptr rhs);
 
 		assign(assign const& that);
 		assign(assign&&) = default;
@@ -56,7 +56,7 @@ namespace gynjo::ast {
 	struct neg {
 		ptr expr;
 
-		neg(ptr expr);
+		explicit neg(ptr expr);
 
 		neg(neg const& that);
 		neg(neg&&) = default;
@@ -119,7 +119,7 @@ namespace gynjo::ast {
 		std::unique_ptr<std::vector<node>> elems;
 
 		tup();
-		tup(std::unique_ptr<std::vector<node>> elems);
+		explicit tup(std::unique_ptr<std::vector<node>> elems);
 
 		tup(tup const& that);
 		tup(tup&&) = default;
