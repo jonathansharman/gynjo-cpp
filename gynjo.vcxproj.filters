@@ -7,6 +7,9 @@
     <Filter Include="test">
       <UniqueIdentifier>{e6a2fc2e-9ca1-48bb-9121-889048712901}</UniqueIdentifier>
     </Filter>
+    <Filter Include="core">
+      <UniqueIdentifier>{f2e7efa8-d605-487d-b0a2-339a6e91190e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -62,5 +65,10 @@
     <ClInclude Include="src\environment.hpp">
       <Filter>src</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="core\constants.gynj">
+      <Filter>core</Filter>
+    </None>
   </ItemGroup>
 </Project>

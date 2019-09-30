@@ -223,8 +223,30 @@ namespace gynjo {
 				[](auto const&) -> subparse_result { return tl::unexpected{"expected symbol"s}; });
 		}
 
-		//! Parses a statement, which is an assignment or an expression.
+		//! Parses an import statement.
+		auto parse_import(token_it begin, token_it end) -> subparse_result {
+			if (begin == end) { return tl::unexpected{"expected import statement"s}; }
+			return match(
+				*begin,
+				// Imports start with "import".
+				[&](tok::imp) -> subparse_result {
+					auto filename_begin = begin + 1;
+					if (filename_begin != end && std::holds_alternative<tok::sym>(*filename_begin)) {
+						return std::pair{filename_begin + 1, ast::imp{std::get<tok::sym>(*filename_begin).name}};
+					} else {
+						return tl::unexpected{"expected filename"s};
+					}
+				},
+				[](auto const&) -> subparse_result { return tl::unexpected{"expected \"import\""s}; });
+		}
+
+		//! Parses a statement or expression.
 		auto parse_statement(token_it begin, token_it end) -> subparse_result {
+			// Empty input is a no-op.
+			if (begin == end) { return std::pair{end, ast::nop{}}; }
+			// Importation
+			auto import_result = parse_import(begin, end);
+			if (import_result.has_value()) { return import_result; }
 			// Assignment
 			auto assignment_result = parse_assignment(begin, end);
 			if (assignment_result.has_value()) { return assignment_result; }

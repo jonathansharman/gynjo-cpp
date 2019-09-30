@@ -18,4 +18,7 @@ namespace gynjo {
 
 	//! Computes the value of @p input in the context of @env, if possible.
 	auto eval(environment& env, std::string const& input) -> eval_result;
+
+	//! Prints the results of an evaluation (if not empty) or the error message.
+	auto print(eval_result result) -> void;
 }

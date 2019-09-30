@@ -101,11 +101,12 @@ namespace gynjo::ast {
 	}
 
 	auto to_string(node const& node) -> std::string {
+		using namespace std::string_literals;
 		return match(
 			node,
-			[](assign const& assign) {
-				return "(" + ast::to_string(assign.symbol) + " = " + to_string(*assign.rhs) + ")";
-			},
+			[](nop) { return "no-op"s; },
+			[](imp const& imp) { return "import " + imp.filename; },
+			[](assign const& assign) { return ast::to_string(assign.symbol) + " = " + to_string(*assign.rhs); },
 			[](add const& add) { return fmt::format("({} + {})", to_string(*add.addend1), to_string(*add.addend2)); },
 			[](neg const& neg) { return fmt::format("(-{})", to_string(*neg.expr)); },
 			[](sub const& sub) { return fmt::format("({} - {})", to_string(*sub.minuend), to_string(*sub.subtrahend)); },

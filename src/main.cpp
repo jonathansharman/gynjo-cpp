@@ -9,33 +9,39 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include <doctest/doctest.h>
 
+#include <array>
 #include <iostream>
 #include <string>
 
 auto main(int argc, char* argv[]) -> int {
-	int main_result = 0;
-
 #ifdef _DEBUG
 	doctest::Context context;
 	context.setOption("no-breaks", false);
 	context.setOption("success", false);
 	context.applyCommandLine(argc, argv);
-	main_result = context.run();
+	context.run();
 #else
 	// Command-line arguments unused in release build. Supress unused variable warnings.
 	(void)argc;
 	(void)argv;
 #endif
 
-	gynjo::environment env;
+	using namespace gynjo;
+
+	// Load core libraries.
+	environment env;
+	auto core_libs = {"constants"};
+	for (auto const& lib : core_libs) {
+		fmt::print("Importing {}...\n", lib);
+		print(eval(env, fmt::format("import {}", lib)));
+	}
+	fmt::print("Ready!\n");
+
+	// REPL.
 	for (;;) {
 		std::cout << ">> ";
 		std::string line;
 		std::getline(std::cin, line);
-		if (line == "exit" || line == "quit") break;
-		auto const eval_result = gynjo::eval(env, line);
-		std::cout << (eval_result.has_value() ? gynjo::val::to_string(eval_result.value()) : eval_result.error()) << '\n';
+		print(eval(env, line));
 	}
-
-	return main_result;
 }

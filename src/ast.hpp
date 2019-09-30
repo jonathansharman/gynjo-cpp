@@ -14,13 +14,35 @@
 
 namespace gynjo::ast {
 	//! Union type of all AST node types.
-	using node =
-		std::variant<struct assign, struct add, struct neg, struct sub, struct cluster, struct lambda, struct tup, tok::num, tok::sym>;
+	using node = std::variant< //
+		struct nop,
+		struct imp,
+		struct assign,
+		struct add,
+		struct neg,
+		struct sub,
+		struct cluster,
+		struct lambda,
+		struct tup,
+		tok::num,
+		tok::sym>;
 
 	//! Unique pointer to an AST node.
 	using ptr = std::unique_ptr<node>;
 
-	//! Assignment expression.
+	//! No-op - statement that does nothing.
+	struct nop {
+		bool operator==(nop const&) const = default;
+	};
+
+	//! Import statement.
+	struct imp {
+		std::string filename;
+
+		bool operator==(imp const&) const = default;
+	};
+
+	//! Assignment statement.
 	struct assign {
 		tok::sym symbol;
 		ptr rhs;

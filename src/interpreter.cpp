@@ -13,6 +13,7 @@
 #include <fmt/format.h>
 
 #include <cmath>
+#include <fstream>
 
 using namespace std::string_literals;
 
@@ -97,6 +98,21 @@ namespace gynjo {
 	auto eval(environment& env, ast::node const& ast) -> eval_result {
 		return match(
 			ast,
+			[](ast::nop) -> eval_result { return val::make_tup(); },
+			[&](ast::imp const& imp) -> eval_result {
+				std::ifstream fin{imp.filename + ".gynj"};
+				if (!fin.is_open()) {
+					return tl::unexpected{fmt::format("failed to load library \"{}\"", imp.filename)};
+				}
+				std::string line;
+				while (std::getline(fin, line)) {
+					auto line_result = eval(env, line);
+					if (!line_result.has_value()) {
+						return tl::unexpected{fmt::format("error in \"{}\": {}", imp.filename, line_result.error())};
+					}
+				}
+				return val::make_tup();
+			},
 			[&](ast::assign const& assign) {
 				return eval(env, *assign.rhs).and_then([&](val::value expr_value) -> eval_result {
 					env.vars[assign.symbol.name] = expr_value;
@@ -278,6 +294,16 @@ namespace gynjo {
 			}
 		} else {
 			return tl::unexpected{"Lex error: " + lex_result.error()};
+		}
+	}
+
+	auto print(eval_result result) -> void {
+		if (result.has_value()) {
+			if (result.value() != val::value{val::make_tup()}) {
+				fmt::print("{}\n", gynjo::val::to_string(result.value()));
+			}
+		} else {
+			fmt::print("{}\n", result.error());
 		}
 	}
 }

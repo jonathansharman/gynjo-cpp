@@ -10,6 +10,10 @@
 #include <variant>
 
 namespace gynjo::tok {
+	//! Token for "import" keyword.
+	struct imp {
+		auto operator<=>(imp const&) const = default;
+	};
 	//! Token for "=".
 	struct eq {
 		auto operator<=>(eq const&) const = default;
@@ -62,24 +66,25 @@ namespace gynjo::tok {
 	};
 
 	//! Union type of all valid tokens.
-	using token = std::variant<eq, plus, minus, mul, div, exp, lft, rht, com, arrow, num, sym>;
+	using token = std::variant<imp, eq, plus, minus, mul, div, exp, lft, rht, com, arrow, num, sym>;
 
 	//! Converts the token @p tok to a user-readable string.
 	inline auto to_string(token tok) -> std::string {
 		using namespace std::string_literals;
 		return match(
 			tok,
-			[&](eq const&) { return "="s; },
-			[&](plus const&) { return "+"s; },
-			[&](minus const&) { return "-"s; },
-			[&](mul const&) { return "*"s; },
-			[&](div const&) { return "/"s; },
-			[&](exp const&) { return "^"s; },
-			[&](lft const&) { return "("s; },
-			[&](rht const&) { return ")"s; },
-			[&](com const&) { return ","s; },
-			[&](arrow const&) { return "->"s; },
-			[&](num const& n) { return n.rep; },
-			[&](sym const& s) { return s.name; });
+			[](imp const&) { return "import"s; },
+			[](eq const&) { return "="s; },
+			[](plus const&) { return "+"s; },
+			[](minus const&) { return "-"s; },
+			[](mul const&) { return "*"s; },
+			[](div const&) { return "/"s; },
+			[](exp const&) { return "^"s; },
+			[](lft const&) { return "("s; },
+			[](rht const&) { return ")"s; },
+			[](com const&) { return ","s; },
+			[](arrow const&) { return "->"s; },
+			[](num const& n) { return n.rep; },
+			[](sym const& s) { return s.name; });
 	}
 }
