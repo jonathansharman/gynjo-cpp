@@ -49,12 +49,10 @@ namespace gynjo {
 
 		//! Tuple of Gynjo values.
 		struct tup {
-			std::vector<ptr> elems;
+			std::unique_ptr<std::vector<value>> elems;
 
-			template <typename... Args>
-			tup(Args&&... args) {
-				(elems.push_back(std::move(args)), ...);
-			}
+			tup();
+			tup(std::unique_ptr<std::vector<value>> elems);
 
 			tup(tup const& that);
 			tup(tup&&) = default;
@@ -64,6 +62,13 @@ namespace gynjo {
 
 			bool operator==(tup const& that) const;
 		};
+
+		template <typename... Args>
+		auto make_tup(Args&&... args) {
+			auto elems = std::make_unique<std::vector<value>>();
+			(elems->push_back(std::move(args)), ...);
+			return tup{std::move(elems)};
+		}
 
 		template <typename T>
 		auto make_value(T&& val) -> ptr {

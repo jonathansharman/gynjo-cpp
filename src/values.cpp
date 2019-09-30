@@ -19,26 +19,21 @@ namespace gynjo::val {
 		return *this;
 	}
 
+	tup::tup() : elems{std::make_unique<std::vector<value>>()} {}
+
+	tup::tup(std::unique_ptr<std::vector<value>> elems) : elems{std::move(elems)} {}
+
 	tup::tup(tup const& that) {
-		for (auto& elem : that.elems) {
-			elems.push_back(make_value(*elem));
-		}
+		elems = std::make_unique<std::vector<value>>(*that.elems);
 	}
 
 	tup& tup::operator=(tup const& that) {
-		elems.clear();
-		for (auto& elem : that.elems) {
-			elems.push_back(make_value(*elem));
-		}
+		elems = std::make_unique<std::vector<value>>(*that.elems);
 		return *this;
 	}
 
 	bool tup::operator==(tup const& that) const {
-		if (elems.size() != that.elems.size()) { return false; }
-		for (std::size_t i = 0; i < elems.size(); ++i) {
-			if (*elems[i] != *that.elems[i]) { return false; }
-		}
-		return true;
+		return *elems == *that.elems;
 	}
 
 	auto to_string(value const& val) -> std::string {
@@ -48,10 +43,10 @@ namespace gynjo::val {
 			[](num const& num) { return num.str(); },
 			[](tup const& tup) {
 				std::string result = "(";
-				if (!tup.elems.empty()) {
-					result += to_string(*tup.elems.front());
-					for (auto it = tup.elems.begin() + 1; it != tup.elems.end(); ++it) {
-						result += ", " + to_string(**it);
+				if (!tup.elems->empty()) {
+					result += to_string(tup.elems->front());
+					for (auto it = tup.elems->begin() + 1; it != tup.elems->end(); ++it) {
+						result += ", " + to_string(*it);
 					}
 				}
 				result += ")";

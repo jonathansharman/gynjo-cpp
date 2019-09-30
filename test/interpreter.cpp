@@ -34,12 +34,7 @@ TEST_SUITE("interpreter") {
 
 	TEST_CASE("tuple evaluation") {
 		environment env{};
-		val::value const expected = val::tup{
-			val::make_value(val::num{1}),
-			val::make_value(val::tup{
-				val::make_value(val::num{2}), val::make_value(val::num{3}) //
-			}) //
-		};
+		val::value const expected = val::make_tup(val::num{1}, val::make_tup(val::num{2}, val::num{3}));
 		auto const actual = eval(env, "(1, (2, 3))");
 		CHECK(expected == actual.value());
 	}

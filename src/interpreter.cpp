@@ -77,18 +77,18 @@ namespace gynjo {
 		// The parser guarantees the parameter list is a tuple.
 		auto const& params = std::get<ast::tup>(*f.lambda.params);
 		// Ensure correct number of arguments.
-		if (arg.elems.size() != params.elems.size()) {
+		if (arg.elems->size() != params.elems.size()) {
 			return tl::unexpected{fmt::format("attempted to call {}-ary function with {} argument{}.",
 				params.elems.size(),
-				arg.elems.size(),
-				arg.elems.size() == 1 ? "" : "s")};
+				arg.elems->size(),
+				arg.elems->size() == 1 ? "" : "s")};
 		}
 		// Assign arguments to parameters within a copy of the closure's environment.
 		auto app_env = *f.env;
-		for (std::size_t i = 0; i < arg.elems.size(); ++i) {
+		for (std::size_t i = 0; i < arg.elems->size(); ++i) {
 			// The parser guarantees that each parameter is a symbol.
 			auto param = std::get<tok::sym>(*params.elems[i]).name;
-			app_env.vars[param] = *arg.elems[i];
+			app_env.vars[param] = (*arg.elems)[i];
 		}
 		// Evaluate function body within the application environment.
 		return eval(app_env, f.lambda.body);
@@ -165,7 +165,8 @@ namespace gynjo {
 								// Argument is already a tuple.
 								? application(std::get<val::closure>(f), std::get<val::tup>(arg))
 								// Wrap argument in a tuple.
-								: application(std::get<val::closure>(f), val::tup{make_value(arg)});
+								: application(std::get<val::closure>(f),
+									  val::tup{std::make_unique<std::vector<val::value>>(std::vector<val::value>{arg})});
 							if (result.has_value()) {
 								items[i] = std::move(result.value());
 								items.erase(items.begin() + i + 1);
@@ -250,7 +251,7 @@ namespace gynjo {
 				for (auto const& elem_ast : tup_ast.elems) {
 					auto elem_result = eval(env, elem_ast);
 					if (elem_result.has_value()) {
-						tup_val.elems.push_back(make_value(std::move(elem_result.value())));
+						tup_val.elems->push_back(std::move(elem_result.value()));
 					} else {
 						return elem_result;
 					}
