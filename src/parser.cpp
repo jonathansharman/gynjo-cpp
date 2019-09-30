@@ -12,7 +12,7 @@ namespace gynjo {
 		using namespace std::string_literals;
 
 		using token_it = std::vector<tok::token>::const_iterator;
-		using subparse_result = tl::expected<std::pair<token_it, ast::ptr>, std::string>;
+		using subparse_result = tl::expected<std::pair<token_it, ast::node>, std::string>;
 
 		auto parse_terms(token_it begin, token_it end) -> subparse_result;
 
@@ -41,8 +41,8 @@ namespace gynjo {
 					if (first_result.has_value()) {
 						auto [first_end, first] = std::move(first_result.value());
 						it = first_end;
-						could_be_lambda = could_be_lambda && std::holds_alternative<tok::sym>(*first);
-						tup.elems.push_back(std::move(first));
+						could_be_lambda = could_be_lambda && std::holds_alternative<tok::sym>(first);
+						tup.elems->push_back(std::move(first));
 						// Try to parse additional comma-delimited expressions.
 						while (it != end && std::holds_alternative<tok::com>(*it)) {
 							++it;
@@ -50,8 +50,8 @@ namespace gynjo {
 							if (next_result.has_value()) {
 								auto [next_end, next] = std::move(next_result.value());
 								it = next_end;
-								could_be_lambda = could_be_lambda && std::holds_alternative<tok::sym>(*next);
-								tup.elems.push_back(std::move(next));
+								could_be_lambda = could_be_lambda && std::holds_alternative<tok::sym>(next);
+								tup.elems->push_back(std::move(next));
 							} else {
 								return tl::unexpected{"expected expression after ','"s};
 							}
@@ -67,16 +67,21 @@ namespace gynjo {
 						if (body_result.has_value()) {
 							// Assemble lambda from parameter tuple and body.
 							auto [body_end, body] = std::move(body_result.value());
-							return std::pair{body_end, make_node(ast::lambda{make_node(std::move(tup)), std::move(body)})};
+							return std::pair{body_end, ast::lambda{make_node(std::move(tup)), make_node(std::move(body))}};
 						}
 					}
 					// Collapse singletons back into their contained values. This allows use of parentheses for
 					// value grouping without having to special-case interpretation when an argument is a singleton.
-					return std::pair{it, tup.elems.size() == 1 ? std::move(tup.elems.front()) : make_node(std::move(tup))};
+					return std::pair{it,
+						tup.elems->size() == 1
+							// Extract singleton element.
+							? std::move(tup.elems->front())
+							// Return unmodified tuple.
+							: std::move(tup)};
 				},
 				// Number
 				[&](tok::num const& num) -> subparse_result {
-					return std::pair{it, ast::make_node(num)};
+					return std::pair{it, num};
 				},
 				// Symbol or lambda
 				[&](tok::sym const& sym) -> subparse_result {
@@ -85,11 +90,11 @@ namespace gynjo {
 					if (body_result.has_value()) {
 						// Assemble lambda from the parameter wrapped in a tuple and the body.
 						auto [body_end, body] = std::move(body_result.value());
-						return std::pair{body_end,
-							make_node(ast::lambda{ast::make_node(ast::tup{ast::make_node(sym)}), std::move(body)})};
+						return std::pair{
+							body_end, ast::lambda{ast::make_node(ast::make_tup(sym)), make_node(std::move(body))}};
 					}
 					// It's just a symbol.
-					return std::pair{it, ast::make_node(sym)};
+					return std::pair{it, sym};
 				},
 				// Anything else is unexpected.
 				[](auto const& t) -> subparse_result {
@@ -97,13 +102,14 @@ namespace gynjo {
 				});
 		}
 
-		//! Parses a cluster of function calls, exponentiations, (possibly implicit) multiplications, and/or divisions.
-		//! The result is something that will require further parsing by the interpreter using available semantic info.
+		//! Parses a cluster of function calls, exponentiations, (possibly implicit) multiplications, and/or
+		//! divisions. The result is something that will require further parsing by the interpreter using
+		//! available semantic info.
 		auto parse_cluster(token_it begin, token_it end) -> subparse_result {
-			return parse_value(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+			return parse_value(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
 				auto [it, first] = std::move(result);
-				std::vector<ast::ptr> items;
-				items.push_back(std::move(first));
+				auto items = std::make_unique<std::vector<ast::node>>();
+				items->push_back(std::move(first));
 				std::vector<ast::cluster::connector> connectors;
 				while (it != end) {
 					// The following match determines three things:
@@ -141,15 +147,15 @@ namespace gynjo {
 					// Got another cluster item.
 					auto [next_end, next_item] = std::move(next_result.value());
 					it = next_end;
-					items.emplace_back(std::move(next_item));
+					items->emplace_back(std::move(next_item));
 					connectors.push_back(connector);
 				}
 				return std::pair{it,
-					items.size() == 1
+					items->size() == 1
 						// Found a single value. Just extract it here.
-						? std::move(items.front())
+						? std::move(items->front())
 						// Found a cluster of values.
-						: make_node(ast::cluster{std::move(items), std::move(connectors)})};
+						: ast::cluster{std::move(items), std::move(connectors)}};
 			});
 		}
 
@@ -160,9 +166,9 @@ namespace gynjo {
 				*begin,
 				// Unary minus
 				[&](tok::minus) {
-					return parse_cluster(begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+					return parse_cluster(begin + 1, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
 						auto [factor_end, factor] = std::move(result);
-						return std::pair{factor_end, make_node(ast::neg{std::move(factor)})};
+						return std::pair{factor_end, ast::neg{make_node(std::move(factor))}};
 					});
 				},
 				// Unary plus (ignored)
@@ -173,7 +179,7 @@ namespace gynjo {
 
 		//! Parses a series of additions and subtractions.
 		auto parse_terms(token_it begin, token_it end) -> subparse_result {
-			return parse_signed_term(begin, end).and_then([&](std::pair<token_it, ast::ptr> result) -> subparse_result {
+			return parse_signed_term(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
 				auto [it, terms] = std::move(result);
 				while (it != end && (std::holds_alternative<tok::plus>(*it) || std::holds_alternative<tok::minus>(*it))) {
 					auto const token = *it;
@@ -182,9 +188,9 @@ namespace gynjo {
 						auto [next_end, next_term] = std::move(next_result.value());
 						it = next_end;
 						if (std::holds_alternative<tok::plus>(token)) {
-							terms = ast::make_node(ast::add{std::move(terms), std::move(next_term)});
+							terms = ast::add{make_node(std::move(terms)), make_node(std::move(next_term))};
 						} else {
-							terms = ast::make_node(ast::sub{std::move(terms), std::move(next_term)});
+							terms = ast::sub{make_node(std::move(terms)), make_node(std::move(next_term))};
 						}
 					} else {
 						return tl::unexpected{"expected term"s};
@@ -204,10 +210,10 @@ namespace gynjo {
 					auto eq_begin = begin + 1;
 					if (eq_begin != end && std::holds_alternative<tok::eq>(*(eq_begin))) {
 						// Get RHS.
-						return parse_terms(eq_begin + 1, end).and_then([&](std::pair<token_it, ast::ptr> rhs_result) -> subparse_result {
+						return parse_terms(eq_begin + 1, end).and_then([&](std::pair<token_it, ast::node> rhs_result) -> subparse_result {
 							// Assemble assignment from symbol and RHS.
 							auto [rhs_end, rhs] = std::move(rhs_result);
-							return std::pair{rhs_end, make_node(ast::assign{symbol, std::move(rhs)})};
+							return std::pair{rhs_end, ast::assign{symbol, make_node(std::move(rhs))}};
 						});
 					} else {
 						return tl::unexpected{"expected '='"s};

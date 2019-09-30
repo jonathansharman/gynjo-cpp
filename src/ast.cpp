@@ -4,13 +4,99 @@
 #include "ast.hpp"
 
 namespace gynjo::ast {
+	assign::assign(tok::sym symbol, ptr rhs) : symbol{symbol}, rhs{std::move(rhs)} {}
+
+	assign::assign(assign const& that) : symbol{that.symbol}, rhs{make_node(*that.rhs)} {}
+
+	assign& assign::operator=(assign const& that) {
+		symbol = that.symbol;
+		rhs = make_node(*that.rhs);
+		return *this;
+	}
+
+	bool assign::operator==(assign const& that) const {
+		return symbol == that.symbol && *rhs == *that.rhs;
+	}
+
+	add::add(ptr addend1, ptr addend2) : addend1{std::move(addend1)}, addend2{std::move(addend2)} {}
+
+	add::add(add const& that) : addend1{make_node(*that.addend1)}, addend2{make_node(*that.addend2)} {}
+
+	add& add::operator=(add const& that) {
+		addend1 = make_node(*that.addend1);
+		return *this;
+	}
+
+	bool add::operator==(add const& that) const {
+		return *addend1 == *that.addend1 && *addend2 == *that.addend2;
+	}
+
+	neg::neg(ptr expr) : expr{std::move(expr)} {}
+
+	neg::neg(neg const& that) : expr{make_node(*that.expr)} {}
+
+	neg& neg::operator=(neg const& that) {
+		expr = make_node(*that.expr);
+		return *this;
+	}
+
+	bool neg::operator==(neg const& that) const {
+		return *expr == *that.expr;
+	}
+
+	sub::sub(ptr minuend, ptr subtrahend) : minuend{std::move(minuend)}, subtrahend{std::move(subtrahend)} {}
+
+	sub::sub(sub const& that) : minuend{make_node(*that.minuend)}, subtrahend{make_node(*that.subtrahend)} {}
+
+	sub& sub::operator=(sub const& that) {
+		minuend = make_node(*that.minuend);
+		subtrahend = make_node(*that.subtrahend);
+		return *this;
+	}
+
+	bool sub::operator==(sub const& that) const {
+		return *minuend == *that.minuend && *subtrahend == *that.subtrahend;
+	}
+
+	cluster::cluster(std::unique_ptr<std::vector<node>> items, std::vector<connector> connectors)
+		: items{std::move(items)}, connectors{std::move(connectors)} {}
+
+	cluster::cluster(cluster const& that)
+		: items{std::make_unique<std::vector<node>>(*that.items)}, connectors{that.connectors} {}
+
+	cluster& cluster::operator=(cluster const& that) {
+		items = std::make_unique<std::vector<node>>(*that.items);
+		connectors = that.connectors;
+		return *this;
+	}
+
+	bool cluster::operator==(cluster const& that) const {
+		return items == that.items;
+	}
+
+	tup::tup() : elems{std::make_unique<std::vector<node>>()} {}
+	tup::tup(std::unique_ptr<std::vector<node>> elems) : elems{std::move(elems)} {}
+
+	tup::tup(tup const& that) {
+		elems = std::make_unique<std::vector<node>>(*that.elems);
+	}
+
+	tup& tup::operator=(tup const& that) {
+		elems = std::make_unique<std::vector<node>>(*that.elems);
+		return *this;
+	}
+
+	bool tup::operator==(tup const& that) const {
+		return *elems == *that.elems;
+	}
+
 	lambda::lambda(ptr params, ptr body) : params{std::move(params)}, body{std::move(body)} {}
 
-	lambda::lambda(lambda const& that) : params(clone(*that.params)), body(clone(*that.body)) {}
+	lambda::lambda(lambda const& that) : params{make_node(*that.params)}, body{make_node(*that.body)} {}
 
 	lambda& lambda::operator=(lambda const& that) {
-		params = clone(*that.params);
-		body = clone(*that.body);
+		params = make_node(*that.params);
+		body = make_node(*that.body);
 		return *this;
 	}
 
@@ -25,9 +111,9 @@ namespace gynjo::ast {
 			[](sub const& sub) { return fmt::format("({} - {})", to_string(*sub.minuend), to_string(*sub.subtrahend)); },
 			[](cluster const& cluster) {
 				std::string result = "(";
-				if (!cluster.items.empty()) { result += to_string(*cluster.items.front()); }
+				if (!cluster.items->empty()) { result += to_string(cluster.items->front()); }
 				for (std::size_t i = 0; i < cluster.connectors.size(); ++i) {
-					auto item_string = to_string(*cluster.items[i + 1]);
+					auto item_string = to_string((*cluster.items)[i + 1]);
 					switch (cluster.connectors[i]) {
 						case cluster::connector::adj_paren:
 							result += " (" + item_string + ")";
@@ -52,10 +138,10 @@ namespace gynjo::ast {
 			[](lambda const& f) { return fmt::format("({} -> {})", to_string(*f.params), to_string(*f.body)); },
 			[](tup const& tup) {
 				std::string result = "(";
-				if (!tup.elems.empty()) {
-					result += to_string(*tup.elems.front());
-					for (auto it = tup.elems.begin() + 1; it != tup.elems.end(); ++it) {
-						result += ", " + to_string(**it);
+				if (!tup.elems->empty()) {
+					result += to_string(tup.elems->front());
+					for (auto it = tup.elems->begin() + 1; it != tup.elems->end(); ++it) {
+						result += ", " + to_string(*it);
 					}
 				}
 				result += ")";
@@ -63,39 +149,5 @@ namespace gynjo::ast {
 			},
 			[](tok::num const& num) { return num.rep; },
 			[](tok::sym const& sym) { return sym.name; });
-	}
-
-	auto clone(ast::node const& node) -> ast::ptr {
-		return match(
-			node,
-			[](assign const& assign) {
-				return make_node(ast::assign{assign.symbol, clone(*assign.rhs)});
-			},
-			[](add const& add) {
-				return make_node(ast::add{clone(*add.addend1), clone(*add.addend2)});
-			},
-			[](neg const& neg) { return make_node(ast::neg{clone(*neg.expr)}); },
-			[](sub const& sub) {
-				return make_node(ast::sub{clone(*sub.minuend), clone(*sub.subtrahend)});
-			},
-			[](cluster const& c) {
-				std::vector<ptr> items;
-				for (auto const& item : c.items) {
-					items.push_back(clone(*item));
-				}
-				return make_node(cluster{std::move(items), c.connectors});
-			},
-			[](lambda const& f) {
-				return make_node(ast::lambda{clone(*f.params), clone(*f.body)});
-			},
-			[](tup const& tup) {
-				ast::tup result;
-				for (auto const& elem : tup.elems) {
-					result.elems.push_back(clone(*elem));
-				}
-				return make_node(std::move(result));
-			},
-			[](tok::num const& num) { return make_node(num); },
-			[](tok::sym const& sym) { return make_node(sym); });
 	}
 }

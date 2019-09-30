@@ -14,7 +14,7 @@
 
 namespace gynjo {
 	//! Either an AST pointer or an error message.
-	using parse_result = tl::expected<ast::ptr, std::string>;
+	using parse_result = tl::expected<ast::node, std::string>;
 
 	//! Parses @p tokens into an AST in the context of @p env, if possible.
 	auto parse(std::vector<tok::token> tokens) -> parse_result;

@@ -52,6 +52,6 @@ namespace gynjo::val {
 				result += ")";
 				return result;
 			},
-			[](closure const& f) { return fmt::format("(closure on {})", ast::to_string(f.lambda)); });
+			[](closure const& f) { return ast::to_string(f.lambda); });
 	}
 }

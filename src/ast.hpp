@@ -24,21 +24,65 @@ namespace gynjo::ast {
 	struct assign {
 		tok::sym symbol;
 		ptr rhs;
+
+		assign(tok::sym symbol, ptr rhs);
+
+		assign(assign const& that);
+		assign(assign&&) = default;
+
+		assign& operator=(assign const& that);
+		assign& operator=(assign&&) = default;
+
+		bool operator==(assign const& that) const;
 	};
+
 	//! Addition expression.
 	struct add {
 		ptr addend1;
 		ptr addend2;
+
+		add(ptr addend1, ptr addend2);
+
+		add(add const& that);
+		add(add&&) = default;
+
+		add& operator=(add const& that);
+		add& operator=(add&&) = default;
+
+		bool operator==(add const& that) const;
 	};
+
 	//! Negation expression.
 	struct neg {
 		ptr expr;
+
+		neg(ptr expr);
+
+		neg(neg const& that);
+		neg(neg&&) = default;
+
+		neg& operator=(neg const& that);
+		neg& operator=(neg&&) = default;
+
+		bool operator==(neg const& that) const;
 	};
+
 	//! Binary subtraction expression.
 	struct sub {
 		ptr minuend;
 		ptr subtrahend;
+
+		sub(ptr minuend, ptr subtrahend);
+
+		sub(sub const& that);
+		sub(sub&&) = default;
+
+		sub& operator=(sub const& that);
+		sub& operator=(sub&&) = default;
+
+		bool operator==(sub const& that) const;
 	};
+
 	//! A cluster of function calls, exponentiations, (possibly implicit) multiplications, and/or divisions.
 	//! @note This large grouping of operations is as fine-grained as possible in the parsing stage. Breaking this down
 	//! into specific operations requires additional parsing in the evaluation stage since determining the order of
@@ -53,19 +97,46 @@ namespace gynjo::ast {
 			exp, // Explicit exponentiation
 		};
 
-		std::vector<ptr> items;
-		//! Connector i says how item i + 1 is connected to item i.
+		std::unique_ptr<std::vector<node>> items;
+
+		//! Connector i indicates how item i + 1 is connected to item i.
 		std::vector<connector> connectors;
+
+		cluster() = default;
+		cluster(std::unique_ptr<std::vector<node>> items, std::vector<connector> connectors);
+
+		cluster(cluster const& that);
+		cluster(cluster&&) = default;
+
+		cluster& operator=(cluster const& that);
+		cluster& operator=(cluster&&) = default;
+
+		bool operator==(cluster const& that) const;
 	};
+
 	//! Tuple expression.
 	struct tup {
-		std::vector<ptr> elems;
+		std::unique_ptr<std::vector<node>> elems;
 
-		template <typename... Args>
-		tup(Args&&... args) {
-			(elems.push_back(std::move(args)), ...);
-		}
+		tup();
+		tup(std::unique_ptr<std::vector<node>> elems);
+
+		tup(tup const& that);
+		tup(tup&&) = default;
+
+		tup& operator=(tup const& that);
+		tup& operator=(tup&&) = default;
+
+		bool operator==(tup const& that) const;
 	};
+
+	template <typename... Args>
+	auto make_tup(Args&&... args) {
+		auto elems = std::make_unique<std::vector<node>>();
+		(elems->push_back(std::move(args)), ...);
+		return tup{std::move(elems)};
+	}
+
 	//! Lambda expression.
 	struct lambda {
 		ptr params;
@@ -91,7 +162,4 @@ namespace gynjo::ast {
 
 	//! Converts the AST node @p node to a user-readable string.
 	auto to_string(node const& node) -> std::string;
-
-	//! Creates a deep copy of @p ast.
-	auto clone(ast::node const& node) -> ast::ptr;
 }

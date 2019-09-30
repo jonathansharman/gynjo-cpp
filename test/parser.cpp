@@ -12,13 +12,11 @@ TEST_SUITE("parser") {
 	using namespace gynjo;
 
 	TEST_CASE("kitchen sink") {
-		std::vector<ast::ptr> factors;
-		factors.push_back(make_node(ast::tup{//
-			ast::make_node(tok::num{"1"}),
-			ast::make_node(tok::num{"2"})}));
-		factors.push_back(make_node(ast::add{//
+		auto factors = std::make_unique<std::vector<ast::node>>();
+		factors->push_back(ast::make_tup(tok::num{"1"}, tok::num{"2"}));
+		factors->push_back(ast::add{//
 			make_node(ast::node{tok::num{"3"}}),
-			make_node(ast::node{tok::num{"4"}})}));
+			make_node(ast::node{tok::num{"4"}})});
 		auto const expected = //
 			make_node(ast::assign{
 				tok::sym{"f"},
@@ -51,6 +49,6 @@ TEST_SUITE("parser") {
 			tok::num{"4"},
 			tok::rht{}});
 
-		CHECK(to_string(*expected) == to_string(*actual.value()));
+		CHECK(to_string(*expected) == to_string(actual.value()));
 	}
 }

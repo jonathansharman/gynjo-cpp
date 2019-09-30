@@ -19,12 +19,12 @@ using namespace std::string_literals;
 namespace gynjo {
 	namespace {
 		template <typename F>
-		auto eval_unary(environment& env, ast::ptr const& expr, F&& f) -> eval_result {
+		auto eval_unary(environment& env, ast::node const& expr, F&& f) -> eval_result {
 			return eval(env, expr).and_then([&](val::value const& val) { return std::forward<F>(f)(val); });
 		}
 
 		template <typename F>
-		auto eval_binary(environment& env, ast::ptr const& a, ast::ptr const& b, F&& f) -> eval_result {
+		auto eval_binary(environment& env, ast::node const& a, ast::node const& b, F&& f) -> eval_result {
 			return eval(env, a) //
 				.and_then([&](val::value const& a) { //
 					return eval(env, b) //
@@ -77,9 +77,9 @@ namespace gynjo {
 		// The parser guarantees the parameter list is a tuple.
 		auto const& params = std::get<ast::tup>(*f.lambda.params);
 		// Ensure correct number of arguments.
-		if (arg.elems->size() != params.elems.size()) {
+		if (arg.elems->size() != params.elems->size()) {
 			return tl::unexpected{fmt::format("attempted to call {}-ary function with {} argument{}.",
-				params.elems.size(),
+				params.elems->size(),
 				arg.elems->size(),
 				arg.elems->size() == 1 ? "" : "s")};
 		}
@@ -87,24 +87,24 @@ namespace gynjo {
 		auto app_env = *f.env;
 		for (std::size_t i = 0; i < arg.elems->size(); ++i) {
 			// The parser guarantees that each parameter is a symbol.
-			auto param = std::get<tok::sym>(*params.elems[i]).name;
+			auto param = std::get<tok::sym>((*params.elems)[i]).name;
 			app_env.vars[param] = (*arg.elems)[i];
 		}
 		// Evaluate function body within the application environment.
-		return eval(app_env, f.lambda.body);
+		return eval(app_env, *f.lambda.body);
 	}
 
-	auto eval(environment& env, ast::ptr const& ast) -> eval_result {
+	auto eval(environment& env, ast::node const& ast) -> eval_result {
 		return match(
-			*ast,
+			ast,
 			[&](ast::assign const& assign) {
-				return eval(env, assign.rhs).and_then([&](val::value expr_value) -> eval_result {
+				return eval(env, *assign.rhs).and_then([&](val::value expr_value) -> eval_result {
 					env.vars[assign.symbol.name] = expr_value;
 					return expr_value;
 				});
 			},
 			[&](ast::add const& add) {
-				return eval_binary(env, add.addend1, add.addend2, [](val::value const& a, val::value const& b) -> eval_result {
+				return eval_binary(env, *add.addend1, *add.addend2, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
@@ -118,7 +118,7 @@ namespace gynjo {
 				});
 			},
 			[&](ast::neg const& neg) {
-				return eval_unary(env, neg.expr, [](val::value const& val) -> eval_result {
+				return eval_unary(env, *neg.expr, [](val::value const& val) -> eval_result {
 					return match(
 						val,
 						[&](val::num const& num) -> eval_result { return val::num{-num}; },
@@ -128,7 +128,7 @@ namespace gynjo {
 				});
 			},
 			[&](ast::sub const& sub) {
-				return eval_binary(env, sub.minuend, sub.subtrahend, [](val::value const& a, val::value const& b) -> eval_result {
+				return eval_binary(env, *sub.minuend, *sub.subtrahend, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
@@ -143,7 +143,7 @@ namespace gynjo {
 			},
 			[&](ast::cluster const& cluster) -> eval_result {
 				std::vector<val::value> items;
-				for (auto const& item_ast : cluster.items) {
+				for (auto const& item_ast : *(cluster.items)) {
 					auto item_result = eval(env, item_ast);
 					if (item_result.has_value()) {
 						items.push_back(std::move(item_result.value()));
@@ -165,8 +165,7 @@ namespace gynjo {
 								// Argument is already a tuple.
 								? application(std::get<val::closure>(f), std::get<val::tup>(arg))
 								// Wrap argument in a tuple.
-								: application(std::get<val::closure>(f),
-									  val::tup{std::make_unique<std::vector<val::value>>(std::vector<val::value>{arg})});
+								: application(std::get<val::closure>(f), val::make_tup(arg));
 							if (result.has_value()) {
 								items[i] = std::move(result.value());
 								items.erase(items.begin() + i + 1);
@@ -248,7 +247,7 @@ namespace gynjo {
 			},
 			[&](ast::tup const& tup_ast) -> eval_result {
 				val::tup tup_val;
-				for (auto const& elem_ast : tup_ast.elems) {
+				for (auto const& elem_ast : *tup_ast.elems) {
 					auto elem_result = eval(env, elem_ast);
 					if (elem_result.has_value()) {
 						tup_val.elems->push_back(std::move(elem_result.value()));
