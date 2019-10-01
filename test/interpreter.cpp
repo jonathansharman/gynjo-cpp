@@ -18,17 +18,17 @@ TEST_SUITE("interpreter") {
 		CHECK(expected == actual.value());
 	}
 
-	TEST_CASE("subtraction") {
+	TEST_CASE("subtraction and negation") {
 		environment env;
-		val::value const expected = val::num{-1.0};
-		auto const actual = eval(env, "1-2");
+		val::value const expected = val::num{-1.25};
+		auto const actual = eval(env, "-1+-2^-2");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("simple compound with parentheses") {
 		environment env;
-		val::value const expected = val::num{-15.0};
-		auto const actual = eval(env, "-5 * (1 +  2)");
+		val::value const expected = val::num{5.0};
+		auto const actual = eval(env, "-5 *(1 +  -2)");
 		CHECK(expected == actual.value());
 	}
 

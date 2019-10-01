@@ -19,7 +19,6 @@ namespace gynjo::ast {
 		struct imp,
 		struct assign,
 		struct add,
-		struct neg,
 		struct sub,
 		struct cluster,
 		struct lambda,
@@ -74,21 +73,6 @@ namespace gynjo::ast {
 		bool operator==(add const& that) const;
 	};
 
-	//! Negation expression.
-	struct neg {
-		ptr expr;
-
-		explicit neg(ptr expr);
-
-		neg(neg const& that);
-		neg(neg&&) = default;
-
-		neg& operator=(neg const& that);
-		neg& operator=(neg&&) = default;
-
-		bool operator==(neg const& that) const;
-	};
-
 	//! Binary subtraction expression.
 	struct sub {
 		ptr minuend;
@@ -119,13 +103,17 @@ namespace gynjo::ast {
 			exp, // Explicit exponentiation
 		};
 
+		//! Determines whether the corresponding item is preceded by a negative sign.
+		std::vector<bool> negations;
+
+		//! A node in a function application, exponentiation, multiplication, or division.
 		std::unique_ptr<std::vector<node>> items;
 
 		//! Connector i indicates how item i + 1 is connected to item i.
 		std::vector<connector> connectors;
 
 		cluster() = default;
-		cluster(std::unique_ptr<std::vector<node>> items, std::vector<connector> connectors);
+		cluster(std::vector<bool> negations, std::unique_ptr<std::vector<node>> items, std::vector<connector> connectors);
 
 		cluster(cluster const& that);
 		cluster(cluster&&) = default;

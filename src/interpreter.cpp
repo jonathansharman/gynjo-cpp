@@ -40,7 +40,7 @@ namespace gynjo {
 		return match2(
 			dividend,
 			divisor,
-			[&](val::num const& factor1, val::num const& factor2) -> eval_result { return val::num{factor1 * factor2}; },
+			[&](val::num const& factor1, val::num const& factor2) -> eval_result { return factor1 * factor2; },
 			[](auto const& factor1, auto const& factor2) -> eval_result {
 				return tl::unexpected{
 					fmt::format("cannot multiply {} and {}", val::to_string(factor1), val::to_string(factor2))};
@@ -53,7 +53,7 @@ namespace gynjo {
 			divisor,
 			[&](val::num const& dividend, val::num const& divisor) -> eval_result {
 				if (divisor == 0) { return tl::unexpected{"division by zero"s}; }
-				return val::num{dividend / divisor};
+				return dividend / divisor;
 			},
 			[](auto const& dividend, auto const& divisor) -> eval_result {
 				return tl::unexpected{
@@ -66,7 +66,7 @@ namespace gynjo {
 			base,
 			exponent,
 			[&](val::num const& base, val::num const& exponent) -> eval_result {
-				return val::num{boost::multiprecision::pow(base, exponent)};
+				return boost::multiprecision::pow(base, exponent);
 			},
 			[](auto const& base, auto const& exponent) -> eval_result {
 				return tl::unexpected{
@@ -95,9 +95,16 @@ namespace gynjo {
 		return eval(app_env, *f.lambda.body);
 	}
 
-	auto eval(environment& env, ast::node const& ast) -> eval_result {
+	auto negate(val::value const& value) -> eval_result {
 		return match(
-			ast,
+			value,
+			[](val::num num) -> eval_result { return -num; },
+			[](auto const& value) -> eval_result { return tl::unexpected{"cannot negate " + val::to_string(value)}; });
+	}
+
+	auto eval(environment& env, ast::node const& node) -> eval_result {
+		return match(
+			node,
 			[](ast::nop) -> eval_result { return val::make_tup(); },
 			[&](ast::imp const& imp) -> eval_result {
 				std::ifstream fin{imp.filename + ".gynj"};
@@ -125,21 +132,11 @@ namespace gynjo {
 						a,
 						b,
 						[&](val::num const& addend1, val::num const& addend2) -> eval_result {
-							return val::num{addend1 + addend2};
+							return addend1 + addend2;
 						},
 						[](auto const& addend1, auto const& addend2) -> eval_result {
 							return tl::unexpected{
 								fmt::format("cannot add {} and {}", val::to_string(addend1), val::to_string(addend2))};
-						});
-				});
-			},
-			[&](ast::neg const& neg) {
-				return eval_unary(env, *neg.expr, [](val::value const& val) -> eval_result {
-					return match(
-						val,
-						[&](val::num const& num) -> eval_result { return val::num{-num}; },
-						[](auto const& expr) -> eval_result {
-							return tl::unexpected{fmt::format("cannot negate {}", to_string(expr))};
 						});
 				});
 			},
@@ -149,7 +146,7 @@ namespace gynjo {
 						a,
 						b,
 						[&](val::num const& minuend, val::num const& subtrahend) -> eval_result {
-							return val::num{minuend - subtrahend};
+							return minuend - subtrahend;
 						},
 						[](auto const& minuend, auto const& subtrahend) -> eval_result {
 							return tl::unexpected{fmt::format(
@@ -175,6 +172,15 @@ namespace gynjo {
 					for (std::size_t i = 0; i < connectors.size();) {
 						if (connectors[i] == connector && std::holds_alternative<val::closure>(items[i])) {
 							auto const& f = items[i];
+							// Apply negation if necessary.
+							if (cluster.negations[i + 1]) {
+								auto negate_result = negate(items[i + 1]);
+								if (negate_result.has_value()) {
+									items[i + 1] = negate_result.value();
+								} else {
+									return negate_result.error();
+								}
+							}
 							auto const& arg = items[i + 1];
 							// Apply function.
 							auto result = std::holds_alternative<val::tup>(arg)
@@ -184,6 +190,7 @@ namespace gynjo {
 								: application(std::get<val::closure>(f), val::make_tup(arg));
 							if (result.has_value()) {
 								items[i] = std::move(result.value());
+								// Erase consumed item.
 								items.erase(items.begin() + i + 1);
 								connectors.erase(connectors.begin() + i);
 							} else {
@@ -202,6 +209,15 @@ namespace gynjo {
 				for (std::size_t i = 0; i < connectors.size();) {
 					if (connectors[i] == ast::cluster::connector::exp) {
 						auto const& base = items[i];
+						// Apply negation if necessary.
+						if (cluster.negations[i + 1]) {
+							auto negate_result = negate(items[i + 1]);
+							if (negate_result.has_value()) {
+								items[i + 1] = negate_result.value();
+							} else {
+								return negate_result;
+							}
+						}
 						auto const& exp = items[i + 1];
 						auto result = power(base, exp);
 						if (result.has_value()) {
@@ -228,6 +244,15 @@ namespace gynjo {
 							[[fallthrough]];
 						case ast::cluster::connector::mul: {
 							auto const& factor1 = items[i];
+							// Apply negation if necessary.
+							if (cluster.negations[i + 1]) {
+								auto negate_result = negate(items[i + 1]);
+								if (negate_result.has_value()) {
+									items[i + 1] = negate_result.value();
+								} else {
+									return negate_result;
+								}
+							}
 							auto const& factor2 = items[i + 1];
 							auto result = product(factor1, factor2);
 							if (result.has_value()) {
@@ -242,6 +267,15 @@ namespace gynjo {
 						default: {
 							// Division is the only remaining possibility.
 							auto const& dividend = items[i];
+							// Apply negation if necessary.
+							if (cluster.negations[i + 1]) {
+								auto negate_result = negate(items[i + 1]);
+								if (negate_result.has_value()) {
+									items[i + 1] = negate_result.value();
+								} else {
+									return negate_result;
+								}
+							}
 							auto const& divisor = items[i + 1];
 							auto result = quotient(dividend, divisor);
 							if (result.has_value()) {
@@ -255,6 +289,15 @@ namespace gynjo {
 					}
 				}
 				// At this point, all values should be folded into the front of items.
+				// Apply final negation if necessary.
+				if (cluster.negations.front()) {
+					auto negate_result = negate(items.front());
+					if (negate_result.has_value()) {
+						items.front() = negate_result.value();
+					} else {
+						return negate_result;
+					}
+				}
 				return items.front();
 			},
 			[&](ast::lambda const& f) -> eval_result {

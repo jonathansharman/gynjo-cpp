@@ -31,19 +31,6 @@ namespace gynjo::ast {
 		return *addend1 == *that.addend1 && *addend2 == *that.addend2;
 	}
 
-	neg::neg(ptr expr) : expr{std::move(expr)} {}
-
-	neg::neg(neg const& that) : expr{make_node(*that.expr)} {}
-
-	neg& neg::operator=(neg const& that) {
-		expr = make_node(*that.expr);
-		return *this;
-	}
-
-	bool neg::operator==(neg const& that) const {
-		return *expr == *that.expr;
-	}
-
 	sub::sub(ptr minuend, ptr subtrahend) : minuend{std::move(minuend)}, subtrahend{std::move(subtrahend)} {}
 
 	sub::sub(sub const& that) : minuend{make_node(*that.minuend)}, subtrahend{make_node(*that.subtrahend)} {}
@@ -58,13 +45,14 @@ namespace gynjo::ast {
 		return *minuend == *that.minuend && *subtrahend == *that.subtrahend;
 	}
 
-	cluster::cluster(std::unique_ptr<std::vector<node>> items, std::vector<connector> connectors)
-		: items{std::move(items)}, connectors{std::move(connectors)} {}
+	cluster::cluster(std::vector<bool> negations, std::unique_ptr<std::vector<node>> items, std::vector<connector> connectors)
+		: negations{std::move(negations)}, items{std::move(items)}, connectors{std::move(connectors)} {}
 
 	cluster::cluster(cluster const& that)
-		: items{std::make_unique<std::vector<node>>(*that.items)}, connectors{that.connectors} {}
+		: negations{that.negations}, items{std::make_unique<std::vector<node>>(*that.items)}, connectors{that.connectors} {}
 
 	cluster& cluster::operator=(cluster const& that) {
+		negations = that.negations;
 		items = std::make_unique<std::vector<node>>(*that.items);
 		connectors = that.connectors;
 		return *this;
@@ -108,13 +96,14 @@ namespace gynjo::ast {
 			[](imp const& imp) { return "import " + imp.filename; },
 			[](assign const& assign) { return ast::to_string(assign.symbol) + " = " + to_string(*assign.rhs); },
 			[](add const& add) { return fmt::format("({} + {})", to_string(*add.addend1), to_string(*add.addend2)); },
-			[](neg const& neg) { return fmt::format("(-{})", to_string(*neg.expr)); },
 			[](sub const& sub) { return fmt::format("({} - {})", to_string(*sub.minuend), to_string(*sub.subtrahend)); },
 			[](cluster const& cluster) {
 				std::string result = "(";
-				if (!cluster.items->empty()) { result += to_string(cluster.items->front()); }
+				if (!cluster.items->empty()) {
+					result += (cluster.negations.front() ? "-" : "") + to_string(cluster.items->front());
+				}
 				for (std::size_t i = 0; i < cluster.connectors.size(); ++i) {
-					auto item_string = to_string((*cluster.items)[i + 1]);
+					auto item_string = (cluster.negations[i + 1] ? "-" : "") + to_string((*cluster.items)[i + 1]);
 					switch (cluster.connectors[i]) {
 						case cluster::connector::adj_paren:
 							result += " (" + item_string + ")";

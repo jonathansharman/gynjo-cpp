@@ -12,9 +12,9 @@ TEST_SUITE("parser") {
 	using namespace gynjo;
 
 	TEST_CASE("kitchen sink") {
-		auto factors = std::make_unique<std::vector<ast::node>>();
-		factors->push_back(ast::make_tup(tok::num{"1"}, tok::num{"2"}));
-		factors->push_back(ast::add{//
+		auto cluster_items = std::make_unique<std::vector<ast::node>>();
+		cluster_items->push_back(ast::make_tup(tok::num{"1"}, tok::num{"2"}));
+		cluster_items->push_back(ast::add{//
 			make_node(ast::node{tok::num{"3"}}),
 			make_node(ast::node{tok::num{"4"}})});
 		auto const expected = //
@@ -22,10 +22,8 @@ TEST_SUITE("parser") {
 				tok::sym{"f"},
 				make_node(ast::lambda{
 					make_node(ast::tup{}),
-					make_node(ast::neg{
-						make_node(ast::cluster{
-							std::move(factors), {ast::cluster::connector::mul} //
-						}) //
+					make_node(ast::cluster{
+						{true, false}, std::move(cluster_items), {ast::cluster::connector::mul} //
 					}) //
 				}) //
 			});
@@ -49,6 +47,26 @@ TEST_SUITE("parser") {
 			tok::num{"4"},
 			tok::rht{}});
 
+		CHECK(to_string(*expected) == to_string(actual.value()));
+	}
+
+	TEST_CASE("cluster item negations") {
+		auto cluster_items = std::make_unique<std::vector<ast::node>>();
+		cluster_items->push_back(tok::num{"1"});
+		cluster_items->push_back(tok::num{"2"});
+		cluster_items->push_back(tok::num{"2"});
+		auto const expected = make_node(ast::cluster{//
+			{true, true, false},
+			std::move(cluster_items),
+			{ast::cluster::connector::div, ast::cluster::connector::exp}});
+		auto const actual = parse(std::vector<tok::token>{//
+			tok::minus{},
+			tok::num{"1"},
+			tok::div{},
+			tok::minus{},
+			tok::num{"2"},
+			tok::exp{},
+			tok::num{"2"}});
 		CHECK(to_string(*expected) == to_string(actual.value()));
 	}
 }

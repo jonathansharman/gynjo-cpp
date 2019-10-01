@@ -102,35 +102,72 @@ namespace gynjo {
 				});
 		}
 
+		//! Checks whether the next token is a minus.
+		auto peek_negative(token_it begin, token_it end) -> bool {
+			if (begin == end) { return false; }
+			return match(
+				*begin,
+				// Unary minus
+				[&](tok::minus) { return true; },
+				// Unary plus (ignored)
+				[&](tok::plus) { return false; },
+				// Unsigned
+				[&](auto const&) { return false; });
+		}
+
 		//! Parses a cluster of function calls, exponentiations, (possibly implicit) multiplications, and/or
 		//! divisions. The result is something that will require further parsing by the interpreter using
 		//! available semantic info.
 		auto parse_cluster(token_it begin, token_it end) -> subparse_result {
+			// Get sign of first item.
+			std::vector<bool> negations;
+			if (peek_negative(begin, end)) {
+				++begin;
+				negations.push_back(true);
+			} else {
+				negations.push_back(false);
+			}
+			// Parse first item.
 			return parse_value(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
 				auto [it, first] = std::move(result);
 				auto items = std::make_unique<std::vector<ast::node>>();
 				items->push_back(std::move(first));
+				// Now parse connectors and subsequent items.
 				std::vector<ast::cluster::connector> connectors;
 				while (it != end) {
-					// The following match determines three things:
-					//   1) The iterator offset to the start of the next factor
-					//   2) Whether the next factor is required or optional
-					//   3) The connector to the cluster element, if any.
+					// The following match does three things:
+					//   1) Pushes the next negation flag, based on the peeked sign and operator
+					//   2) Determines the iterator offset to the start of the next factor
+					//   3) Determines Whether the next factor is required or optional
+					//   4) Determines the connector to the cluster element, if any
 					auto [it_offset, required, connector] = match(
 						*it,
-						[](tok::mul) {
-							return std::tuple{1, true, ast::cluster::connector::mul};
+						[&negations, minus_it = it + 1, end = end](tok::mul) {
+							bool const negative = peek_negative(minus_it, end);
+							negations.push_back(negative);
+							// Consume "*" and maybe "-".
+							return std::tuple{negative ? 2 : 1, true, ast::cluster::connector::mul};
 						},
-						[](tok::div) {
-							return std::tuple{1, true, ast::cluster::connector::div};
+						[&negations, minus_it = it + 1, end = end](tok::div) {
+							bool const negative = peek_negative(minus_it, end);
+							negations.push_back(negative);
+							// Consume "/" and maybe "-".
+							return std::tuple{negative ? 2 : 1, true, ast::cluster::connector::div};
 						},
-						[](tok::exp) {
-							return std::tuple{1, true, ast::cluster::connector::exp};
+						[&negations, minus_it = it + 1, end = end](tok::exp) {
+							bool const negative = peek_negative(minus_it, end);
+							negations.push_back(negative);
+							// Consume "^" and maybe "-".
+							return std::tuple{negative ? 2 : 1, true, ast::cluster::connector::exp};
 						},
-						[](tok::lft) {
+						[&negations](tok::lft) {
+							negations.push_back(false);
+							// Don't consume any tokens.
 							return std::tuple{0, true, ast::cluster::connector::adj_paren};
 						},
-						[](auto const&) {
+						[&negations](auto const&) {
+							negations.push_back(false);
+							// Don't consume any tokens.
 							return std::tuple{0, false, ast::cluster::connector::adj_nonparen};
 						});
 					// Try to read a cluster element.
@@ -151,39 +188,21 @@ namespace gynjo {
 					connectors.push_back(connector);
 				}
 				return std::pair{it,
-					items->size() == 1
-						// Found a single value. Just extract it here.
+					items->size() == 1 && negations.front() == false
+						// Found a single non-negated value. Just extract it here.
 						? std::move(items->front())
 						// Found a cluster of values.
-						: ast::cluster{std::move(items), std::move(connectors)}};
+						: ast::cluster{std::move(negations), std::move(items), std::move(connectors)}};
 			});
-		}
-
-		//! Parses a term along with its leading unary plus or minus, if any.
-		auto parse_signed_term(token_it begin, token_it end) -> subparse_result {
-			if (begin == end) { return tl::unexpected{"expected (signed) term"s}; }
-			return match(
-				*begin,
-				// Unary minus
-				[&](tok::minus) {
-					return parse_cluster(begin + 1, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
-						auto [factor_end, factor] = std::move(result);
-						return std::pair{factor_end, ast::neg{make_node(std::move(factor))}};
-					});
-				},
-				// Unary plus (ignored)
-				[&](tok::plus) { return parse_cluster(begin + 1, end); },
-				// Unsigned
-				[&](auto const&) { return parse_cluster(begin, end); });
 		}
 
 		//! Parses a series of additions and subtractions.
 		auto parse_terms(token_it begin, token_it end) -> subparse_result {
-			return parse_signed_term(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
+			return parse_cluster(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
 				auto [it, terms] = std::move(result);
 				while (it != end && (std::holds_alternative<tok::plus>(*it) || std::holds_alternative<tok::minus>(*it))) {
 					auto const token = *it;
-					auto next_result = parse_signed_term(it + 1, end);
+					auto next_result = parse_cluster(it + 1, end);
 					if (next_result.has_value()) {
 						auto [next_end, next_term] = std::move(next_result.value());
 						it = next_end;
