@@ -23,25 +23,28 @@ TEST_SUITE("lexer") {
 
 	TEST_CASE("numbers, operators, and separators") {
 		auto const expected = std::vector<token>{//
-			num{"5"},
+			eq{},
+			assign{},
+			neq{},
+			lt{},
+			leq{},
+			gt{},
+			geq{},
 			mul{},
 			lft{},
-			num{"1"},
 			plus{},
 			minus{},
 			arrow{},
-			num{"2"},
 			rht{},
 			exp{},
 			exp{},
 			mul{},
-			eq{},
 			div{},
 			num{".1"},
 			num{"0"},
 			num{"0.1"},
 			com{}};
-		auto const actual = lex("5*(1+-->2)^***=/.1 0 0.1,");
+		auto const actual = lex("===!=<<=>>=*(+-->)^***/.1 0 0.1,");
 		CHECK(expected == actual.value());
 	}
 

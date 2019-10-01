@@ -230,10 +230,10 @@ namespace gynjo {
 				*begin,
 				// Symbol to assign to
 				[&](tok::sym symbol) -> subparse_result {
-					auto eq_begin = begin + 1;
-					if (eq_begin != end && std::holds_alternative<tok::eq>(*(eq_begin))) {
+					auto assign_begin = begin + 1;
+					if (assign_begin != end && std::holds_alternative<tok::assign>(*(assign_begin))) {
 						// Get RHS.
-						return parse_terms(eq_begin + 1, end).and_then([&](std::pair<token_it, ast::node> rhs_result) -> subparse_result {
+						return parse_terms(assign_begin + 1, end).and_then([&](std::pair<token_it, ast::node> rhs_result) -> subparse_result {
 							// Assemble assignment from symbol and RHS.
 							auto [rhs_end, rhs] = std::move(rhs_result);
 							return std::pair{rhs_end, ast::assign{symbol, make_node(std::move(rhs))}};

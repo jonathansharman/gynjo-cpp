@@ -32,14 +32,14 @@ namespace gynjo::ast {
 
 	//! No-op - statement that does nothing.
 	struct nop {
-		bool operator==(nop const&) const = default;
+		bool operator==(nop const&) const noexcept = default;
 	};
 
 	//! Import statement.
 	struct imp {
 		std::string filename;
 
-		bool operator==(imp const&) const = default;
+		bool operator==(imp const&) const noexcept = default;
 	};
 
 	//! Assignment statement.
@@ -50,10 +50,10 @@ namespace gynjo::ast {
 		explicit assign(tok::sym symbol, ptr rhs);
 
 		assign(assign const& that);
-		assign(assign&&) = default;
+		assign(assign&&) noexcept = default;
 
 		assign& operator=(assign const& that);
-		assign& operator=(assign&&) = default;
+		assign& operator=(assign&&) noexcept = default;
 
 		bool operator==(assign const& that) const;
 	};
@@ -66,10 +66,10 @@ namespace gynjo::ast {
 		add(ptr addend1, ptr addend2);
 
 		add(add const& that);
-		add(add&&) = default;
+		add(add&&) noexcept = default;
 
 		add& operator=(add const& that);
-		add& operator=(add&&) = default;
+		add& operator=(add&&) noexcept = default;
 
 		bool operator==(add const& that) const;
 	};
@@ -82,10 +82,10 @@ namespace gynjo::ast {
 		sub(ptr minuend, ptr subtrahend);
 
 		sub(sub const& that);
-		sub(sub&&) = default;
+		sub(sub&&) noexcept = default;
 
 		sub& operator=(sub const& that);
-		sub& operator=(sub&&) = default;
+		sub& operator=(sub&&) noexcept = default;
 
 		bool operator==(sub const& that) const;
 	};
@@ -117,10 +117,10 @@ namespace gynjo::ast {
 		cluster(std::vector<bool> negations, std::unique_ptr<std::vector<node>> items, std::vector<connector> connectors);
 
 		cluster(cluster const& that);
-		cluster(cluster&&) = default;
+		cluster(cluster&&) noexcept = default;
 
 		cluster& operator=(cluster const& that);
-		cluster& operator=(cluster&&) = default;
+		cluster& operator=(cluster&&) noexcept = default;
 
 		bool operator==(cluster const& that) const;
 	};
@@ -133,10 +133,10 @@ namespace gynjo::ast {
 		explicit tup(std::unique_ptr<std::vector<node>> elems);
 
 		tup(tup const& that);
-		tup(tup&&) = default;
+		tup(tup&&) noexcept = default;
 
 		tup& operator=(tup const& that);
-		tup& operator=(tup&&) = default;
+		tup& operator=(tup&&) noexcept = default;
 
 		bool operator==(tup const& that) const;
 	};
@@ -156,13 +156,13 @@ namespace gynjo::ast {
 		lambda(ptr params, ptr body);
 
 		lambda(lambda const& that);
-		lambda(lambda&&) = default;
+		lambda(lambda&&) noexcept = default;
 
 		lambda& operator=(lambda const& that);
-		lambda& operator=(lambda&&) = default;
+		lambda& operator=(lambda&&) noexcept = default;
 
 		//! Just structural equality because of the halting problem.
-		bool operator==(lambda const& that) const = default;
+		bool operator==(lambda const& that) const noexcept = default;
 	};
 
 	//! Convenience function for creating an AST node pointer from @p node.

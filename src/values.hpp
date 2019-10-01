@@ -32,15 +32,15 @@ namespace gynjo {
 			closure(ast::lambda lambda, std::unique_ptr<environment> env);
 
 			closure(closure const& that);
-			closure(closure&&) = default;
+			closure(closure&&) noexcept = default;
 
 			~closure();
 
 			closure& operator=(closure const& that);
-			closure& operator=(closure&&) = default;
+			closure& operator=(closure&&) noexcept = default;
 
 			//! Because of the halting problem, this just does shallow equality checking on the body.
-			bool operator==(closure const& other) const = default;
+			bool operator==(closure const& other) const noexcept = default;
 		};
 
 		//! Convenience function for creating a Gynjo value pointer from a value @p val.
@@ -55,10 +55,10 @@ namespace gynjo {
 			explicit tup(std::unique_ptr<std::vector<value>> elems);
 
 			tup(tup const& that);
-			tup(tup&&) = default;
+			tup(tup&&) noexcept = default;
 
 			tup& operator=(tup const& that);
-			tup& operator=(tup&&) = default;
+			tup& operator=(tup&&) noexcept = default;
 
 			bool operator==(tup const& that) const;
 		};

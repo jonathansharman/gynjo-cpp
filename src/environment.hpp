@@ -13,6 +13,6 @@ namespace gynjo {
 	struct environment {
 		std::unordered_map<std::string, val::value> vars;
 
-		bool operator==(environment const&) const = default;
+		bool operator==(environment const&) const noexcept = default;
 	};
 }

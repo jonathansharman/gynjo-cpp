@@ -22,7 +22,13 @@ namespace gynjo {
 			// Comment (ignored)
 			{std::regex{R"...(//.*)..."}, [](std::smatch const&) { return std::nullopt; }},
 			// Operator/separator
-			{std::regex{R"...(=)..."}, [](std::smatch const&) { return tok::eq{}; }},
+			{std::regex{R"...(==)..."}, [](std::smatch const&) { return tok::eq{}; }},
+			{std::regex{R"...(=)..."}, [](std::smatch const&) { return tok::assign{}; }},
+			{std::regex{R"...(!=)..."}, [](std::smatch const&) { return tok::neq{}; }},
+			{std::regex{R"...(<=)..."}, [](std::smatch const&) { return tok::leq{}; }},
+			{std::regex{R"...(<)..."}, [](std::smatch const&) { return tok::lt{}; }},
+			{std::regex{R"...(>=)..."}, [](std::smatch const&) { return tok::geq{}; }},
+			{std::regex{R"...(>)..."}, [](std::smatch const&) { return tok::gt{}; }},
 			{std::regex{R"...(\+)..."}, [](std::smatch const&) { return tok::plus{}; }},
 			{std::regex{R"...(->)..."}, [](std::smatch const&) { return tok::arrow{}; }},
 			{std::regex{R"...(-)..."}, [](std::smatch const&) { return tok::minus{}; }},

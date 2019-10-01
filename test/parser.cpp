@@ -30,7 +30,7 @@ TEST_SUITE("parser") {
 
 		auto const actual = parse(std::vector<tok::token>{//
 			tok::sym{"f"},
-			tok::eq{},
+			tok::assign{},
 			tok::lft{},
 			tok::rht{},
 			tok::arrow{},
