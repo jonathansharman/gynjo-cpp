@@ -18,6 +18,10 @@ namespace gynjo::ast {
 		struct nop,
 		struct imp,
 		struct assign,
+		struct lt,
+		struct leq,
+		struct gt,
+		struct geq,
 		struct add,
 		struct sub,
 		struct cluster,
@@ -56,6 +60,70 @@ namespace gynjo::ast {
 		assign& operator=(assign&&) noexcept = default;
 
 		bool operator==(assign const& that) const;
+	};
+
+	//! Less-than comparison expression.
+	struct lt {
+		ptr left;
+		ptr right;
+
+		lt(ptr left, ptr right);
+
+		lt(lt const& that);
+		lt(lt&&) noexcept = default;
+
+		lt& operator=(lt const& that);
+		lt& operator=(lt&&) noexcept = default;
+
+		bool operator==(lt const& that) const;
+	};
+
+	//! Less-than-or-equal comparison expression.
+	struct leq {
+		ptr left;
+		ptr right;
+
+		leq(ptr left, ptr right);
+
+		leq(leq const& that);
+		leq(leq&&) noexcept = default;
+
+		leq& operator=(leq const& that);
+		leq& operator=(leq&&) noexcept = default;
+
+		bool operator==(leq const& that) const;
+	};
+
+	//! Greater-than comparison expression.
+	struct gt {
+		ptr left;
+		ptr right;
+
+		gt(ptr left, ptr right);
+
+		gt(gt const& that);
+		gt(gt&&) noexcept = default;
+
+		gt& operator=(gt const& that);
+		gt& operator=(gt&&) noexcept = default;
+
+		bool operator==(gt const& that) const;
+	};
+
+	//! Greater-than-or-equal comparison expression.
+	struct geq {
+		ptr left;
+		ptr right;
+
+		geq(ptr left, ptr right);
+
+		geq(geq const& that);
+		geq(geq&&) noexcept = default;
+
+		geq& operator=(geq const& that);
+		geq& operator=(geq&&) noexcept = default;
+
+		bool operator==(geq const& that) const;
 	};
 
 	//! Addition expression.

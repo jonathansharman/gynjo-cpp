@@ -223,7 +223,50 @@ namespace gynjo {
 			});
 		}
 
-		//! Parses an assignment.
+		//! Parses a series of comparison checks (not including equals or not equals).
+		auto parse_comparisons(token_it begin, token_it end) -> subparse_result {
+			return parse_terms(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
+				auto it = std::move(result.first);
+				auto terms = std::move(result.second);
+				auto is_comparison = [](tok::token const& token) {
+					return match(
+						token,
+						[](tok::lt) { return true; },
+						[](tok::leq) { return true; },
+						[](tok::gt) { return true; },
+						[](tok::geq) { return true; },
+						[](auto const&) { return false; });
+				};
+				while (it != end && is_comparison(*it)) {
+					auto const token = *it;
+					auto next_result = parse_terms(it + 1, end);
+					if (next_result.has_value()) {
+						it = std::move(next_result.value().first);
+						auto next_term = std::move(next_result.value().second);
+						match(
+							token,
+							[&](tok::lt) {
+								terms = ast::lt{make_node(std::move(terms)), make_node(std::move(next_term))};
+							},
+							[&](tok::leq) {
+								terms = ast::leq{make_node(std::move(terms)), make_node(std::move(next_term))};
+							},
+							[&](tok::gt) {
+								terms = ast::gt{make_node(std::move(terms)), make_node(std::move(next_term))};
+							},
+							[&](tok::geq) {
+								terms = ast::geq{make_node(std::move(terms)), make_node(std::move(next_term))};
+							},
+							[&](auto const&) { /*unreachable*/ });
+					} else {
+						return tl::unexpected{"expected term"s};
+					}
+				}
+				return std::pair{it, std::move(terms)};
+			});
+		}
+
+		//! Parses an assignment operation.
 		auto parse_assignment(token_it begin, token_it end) -> subparse_result {
 			if (begin == end) { return tl::unexpected{"expected assignment"s}; }
 			return match(
@@ -233,7 +276,7 @@ namespace gynjo {
 					auto assign_begin = begin + 1;
 					if (assign_begin != end && std::holds_alternative<tok::assign>(*(assign_begin))) {
 						// Get RHS.
-						return parse_terms(assign_begin + 1, end).and_then([&](std::pair<token_it, ast::node> rhs_result) -> subparse_result {
+						return parse_comparisons(assign_begin + 1, end).and_then([&](std::pair<token_it, ast::node> rhs_result) -> subparse_result {
 							// Assemble assignment from symbol and RHS.
 							auto [rhs_end, rhs] = std::move(rhs_result);
 							return std::pair{rhs_end, ast::assign{symbol, make_node(std::move(rhs))}};
@@ -274,7 +317,7 @@ namespace gynjo {
 			auto assignment_result = parse_assignment(begin, end);
 			if (assignment_result.has_value()) { return assignment_result; }
 			// Expression
-			auto expression_result = parse_terms(begin, end);
+			auto expression_result = parse_comparisons(begin, end);
 			if (expression_result.has_value()) { return expression_result; }
 			// Unrecognized statement
 			return tl::unexpected{"expected assignment or expression"s};

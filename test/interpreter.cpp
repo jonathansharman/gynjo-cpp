@@ -18,6 +18,32 @@ TEST_SUITE("interpreter") {
 		CHECK(expected == actual.value());
 	}
 
+	TEST_CASE("comparisons") {
+		environment env;
+		val::value const t = tok::boolean{true};
+		val::value const f = tok::boolean{false};
+		SUBCASE("<") {
+			CHECK(t == eval(env, "1 < 2").value());
+			CHECK(f == eval(env, "1 < 1").value());
+			CHECK(f == eval(env, "2 < 1").value());
+		}
+		SUBCASE("<=") {
+			CHECK(t == eval(env, "1 <= 2").value());
+			CHECK(t == eval(env, "1 <= 1").value());
+			CHECK(f == eval(env, "2 <= 1").value());
+		}
+		SUBCASE(">") {
+			CHECK(f == eval(env, "1 > 2").value());
+			CHECK(f == eval(env, "1 > 1").value());
+			CHECK(t == eval(env, "2 > 1").value());
+		}
+		SUBCASE(">=") {
+			CHECK(f == eval(env, "1 >= 2").value());
+			CHECK(t == eval(env, "1 >= 1").value());
+			CHECK(t == eval(env, "2 >= 1").value());
+		}
+	}
+
 	TEST_CASE("subtraction and negation") {
 		environment env;
 		val::value const expected = val::num{-1.25};

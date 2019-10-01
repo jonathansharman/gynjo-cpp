@@ -126,6 +126,62 @@ namespace gynjo {
 					return expr_value;
 				});
 			},
+			[&](ast::lt const& lt) {
+				return eval_binary(env, *lt.left, *lt.right, [](val::value const& a, val::value const& b) -> eval_result {
+					return match2(
+						a,
+						b,
+						[&](val::num const& left, val::num const& right) -> eval_result {
+							return tok::boolean{left < right};
+						},
+						[](auto const& left, auto const& right) -> eval_result {
+							return tl::unexpected{
+								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
+						});
+				});
+			},
+			[&](ast::leq const& leq) {
+				return eval_binary(env, *leq.left, *leq.right, [](val::value const& a, val::value const& b) -> eval_result {
+					return match2(
+						a,
+						b,
+						[&](val::num const& left, val::num const& right) -> eval_result {
+							return tok::boolean{left <= right};
+						},
+						[](auto const& left, auto const& right) -> eval_result {
+							return tl::unexpected{
+								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
+						});
+				});
+			},
+			[&](ast::gt const& gt) {
+				return eval_binary(env, *gt.left, *gt.right, [](val::value const& a, val::value const& b) -> eval_result {
+					return match2(
+						a,
+						b,
+						[&](val::num const& left, val::num const& right) -> eval_result {
+							return tok::boolean{left > right};
+						},
+						[](auto const& left, auto const& right) -> eval_result {
+							return tl::unexpected{
+								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
+						});
+				});
+			},
+			[&](ast::geq const& geq) {
+				return eval_binary(env, *geq.left, *geq.right, [](val::value const& a, val::value const& b) -> eval_result {
+					return match2(
+						a,
+						b,
+						[&](val::num const& left, val::num const& right) -> eval_result {
+							return tok::boolean{left >= right};
+						},
+						[](auto const& left, auto const& right) -> eval_result {
+							return tl::unexpected{
+								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
+						});
+				});
+			},
 			[&](ast::add const& add) {
 				return eval_binary(env, *add.addend1, *add.addend2, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(

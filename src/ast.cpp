@@ -18,6 +18,62 @@ namespace gynjo::ast {
 		return symbol == that.symbol && *rhs == *that.rhs;
 	}
 
+	lt::lt(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
+
+	lt::lt(lt const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
+
+	lt& lt::operator=(lt const& that) {
+		left = make_node(*that.left);
+		right = make_node(*that.right);
+		return *this;
+	}
+
+	bool lt::operator==(lt const& that) const {
+		return *left == *that.left && *right == *that.right;
+	}
+
+	leq::leq(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
+
+	leq::leq(leq const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
+
+	leq& leq::operator=(leq const& that) {
+		left = make_node(*that.left);
+		right = make_node(*that.right);
+		return *this;
+	}
+
+	bool leq::operator==(leq const& that) const {
+		return *left == *that.left && *right == *that.right;
+	}
+
+	gt::gt(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
+
+	gt::gt(gt const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
+
+	gt& gt::operator=(gt const& that) {
+		left = make_node(*that.left);
+		right = make_node(*that.right);
+		return *this;
+	}
+
+	bool gt::operator==(gt const& that) const {
+		return *left == *that.left && *right == *that.right;
+	}
+
+	geq::geq(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
+
+	geq::geq(geq const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
+
+	geq& geq::operator=(geq const& that) {
+		left = make_node(*that.left);
+		right = make_node(*that.right);
+		return *this;
+	}
+
+	bool geq::operator==(geq const& that) const {
+		return *left == *that.left && *right == *that.right;
+	}
+
 	add::add(ptr addend1, ptr addend2) : addend1{std::move(addend1)}, addend2{std::move(addend2)} {}
 
 	add::add(add const& that) : addend1{make_node(*that.addend1)}, addend2{make_node(*that.addend2)} {}
@@ -95,6 +151,10 @@ namespace gynjo::ast {
 			[](nop) { return "no-op"s; },
 			[](imp const& imp) { return "import " + imp.filename; },
 			[](assign const& assign) { return ast::to_string(assign.symbol) + " = " + to_string(*assign.rhs); },
+			[](lt const& lt) { return ast::to_string(*lt.left) + " = " + to_string(*lt.right); },
+			[](leq const& leq) { return ast::to_string(*leq.left) + " = " + to_string(*leq.right); },
+			[](gt const& gt) { return ast::to_string(*gt.left) + " = " + to_string(*gt.right); },
+			[](geq const& geq) { return ast::to_string(*geq.left) + " = " + to_string(*geq.right); },
 			[](add const& add) { return fmt::format("({} + {})", to_string(*add.addend1), to_string(*add.addend2)); },
 			[](sub const& sub) { return fmt::format("({} - {})", to_string(*sub.minuend), to_string(*sub.subtrahend)); },
 			[](cluster const& cluster) {
