@@ -18,6 +18,34 @@ namespace gynjo::ast {
 		return symbol == that.symbol && *rhs == *that.rhs;
 	}
 
+	eq::eq(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
+
+	eq::eq(eq const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
+
+	eq& eq::operator=(eq const& that) {
+		left = make_node(*that.left);
+		right = make_node(*that.right);
+		return *this;
+	}
+
+	bool eq::operator==(eq const& that) const {
+		return *left == *that.left && *right == *that.right;
+	}
+
+	neq::neq(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
+
+	neq::neq(neq const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
+
+	neq& neq::operator=(neq const& that) {
+		left = make_node(*that.left);
+		right = make_node(*that.right);
+		return *this;
+	}
+
+	bool neq::operator==(neq const& that) const {
+		return *left == *that.left && *right == *that.right;
+	}
+
 	lt::lt(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
 
 	lt::lt(lt const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
@@ -151,10 +179,12 @@ namespace gynjo::ast {
 			[](nop) { return "no-op"s; },
 			[](imp const& imp) { return "import " + imp.filename; },
 			[](assign const& assign) { return ast::to_string(assign.symbol) + " = " + to_string(*assign.rhs); },
-			[](lt const& lt) { return ast::to_string(*lt.left) + " = " + to_string(*lt.right); },
-			[](leq const& leq) { return ast::to_string(*leq.left) + " = " + to_string(*leq.right); },
-			[](gt const& gt) { return ast::to_string(*gt.left) + " = " + to_string(*gt.right); },
-			[](geq const& geq) { return ast::to_string(*geq.left) + " = " + to_string(*geq.right); },
+			[](eq const& eq) { return fmt::format("({} == {})", to_string(*eq.left), to_string(*eq.right)); },
+			[](neq const& neq) { return fmt::format("({} != {})", to_string(*neq.left), to_string(*neq.right)); },
+			[](lt const& lt) { return fmt::format("({} < {})", to_string(*lt.left), to_string(*lt.right)); },
+			[](leq const& leq) { return fmt::format("({} <= {})", to_string(*leq.left), to_string(*leq.right)); },
+			[](gt const& gt) { return fmt::format("({} > {})", to_string(*gt.left), to_string(*gt.right)); },
+			[](geq const& geq) { return fmt::format("({} >= {})", to_string(*geq.left), to_string(*geq.right)); },
 			[](add const& add) { return fmt::format("({} + {})", to_string(*add.addend1), to_string(*add.addend2)); },
 			[](sub const& sub) { return fmt::format("({} - {})", to_string(*sub.minuend), to_string(*sub.subtrahend)); },
 			[](cluster const& cluster) {

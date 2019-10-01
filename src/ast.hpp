@@ -18,6 +18,8 @@ namespace gynjo::ast {
 		struct nop,
 		struct imp,
 		struct assign,
+		struct eq,
+		struct neq,
 		struct lt,
 		struct leq,
 		struct gt,
@@ -60,6 +62,38 @@ namespace gynjo::ast {
 		assign& operator=(assign&&) noexcept = default;
 
 		bool operator==(assign const& that) const;
+	};
+
+	//! Less-than comparison expression.
+	struct eq {
+		ptr left;
+		ptr right;
+
+		eq(ptr left, ptr right);
+
+		eq(eq const& that);
+		eq(eq&&) noexcept = default;
+
+		eq& operator=(eq const& that);
+		eq& operator=(eq&&) noexcept = default;
+
+		bool operator==(eq const& that) const;
+	};
+
+	//! Less-than comparison expression.
+	struct neq {
+		ptr left;
+		ptr right;
+
+		neq(ptr left, ptr right);
+
+		neq(neq const& that);
+		neq(neq&&) noexcept = default;
+
+		neq& operator=(neq const& that);
+		neq& operator=(neq&&) noexcept = default;
+
+		bool operator==(neq const& that) const;
 	};
 
 	//! Less-than comparison expression.

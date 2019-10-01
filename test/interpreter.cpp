@@ -22,6 +22,14 @@ TEST_SUITE("interpreter") {
 		environment env;
 		val::value const t = tok::boolean{true};
 		val::value const f = tok::boolean{false};
+		SUBCASE("==") {
+			CHECK(t == eval(env, "1 == 1").value());
+			CHECK(f == eval(env, "1 == 2").value());
+		}
+		SUBCASE("!=") {
+			CHECK(t == eval(env, "1 != 2").value());
+			CHECK(f == eval(env, "1 != 1").value());
+		}
 		SUBCASE("<") {
 			CHECK(t == eval(env, "1 < 2").value());
 			CHECK(f == eval(env, "1 < 1").value());
@@ -41,6 +49,28 @@ TEST_SUITE("interpreter") {
 			CHECK(f == eval(env, "1 >= 2").value());
 			CHECK(t == eval(env, "1 >= 1").value());
 			CHECK(t == eval(env, "2 >= 1").value());
+		}
+		SUBCASE("non-numbers are equal-checkable but not comparable") {
+			// Booleans and tuples can be equality-checked.
+			CHECK(t == eval(env, "true == true").value());
+			CHECK(f == eval(env, "true == false").value());
+			CHECK(f == eval(env, "true != true").value());
+			CHECK(t == eval(env, "true != false").value());
+			CHECK(t == eval(env, "(1, 2, 3) == (1, 2, 3)").value());
+			CHECK(f == eval(env, "(1, 2, 3) == (3, 2, 1)").value());
+			CHECK(f == eval(env, "(1, 2, 3) != (1, 2, 3)").value());
+			CHECK(t == eval(env, "(1, 2, 3) != (3, 2, 1)").value());
+			// Cannot be compared.
+			CHECK(!eval(env, "false < true").has_value());
+			CHECK(!eval(env, "(1, 2, 3) < (3, 2, 1)").has_value());
+		}
+		SUBCASE("different types cannot be compared") {
+			CHECK(!eval(env, "true == (1, 2, 3)").has_value());
+			CHECK(!eval(env, "(x -> x) < false").has_value());
+		}
+		SUBCASE("comparison precedes equality") {
+			CHECK(t == eval(env, "1 < 2 == 2 < 3").value());
+			CHECK(t == eval(env, "1 > 2 != 2 < 3").value());
 		}
 	}
 

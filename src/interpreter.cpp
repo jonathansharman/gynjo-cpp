@@ -126,6 +126,34 @@ namespace gynjo {
 					return expr_value;
 				});
 			},
+			[&](ast::eq const& eq) {
+				return eval_binary(env, *eq.left, *eq.right, [](val::value const& a, val::value const& b) -> eval_result {
+					return match2(
+						a,
+						b,
+						[]<typename T>(T const& left, T const& right)->eval_result {
+							return tok::boolean{left == right};
+						},
+						[](auto const& left, auto const& right) -> eval_result {
+							return tl::unexpected{
+								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
+						});
+				});
+			},
+			[&](ast::neq const& neq) {
+				return eval_binary(env, *neq.left, *neq.right, [](val::value const& a, val::value const& b) -> eval_result {
+					return match2(
+						a,
+						b,
+						[]<typename T>(T const& left, T const& right)->eval_result {
+							return tok::boolean{left != right};
+						},
+						[](auto const& left, auto const& right) -> eval_result {
+							return tl::unexpected{
+								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
+						});
+				});
+			},
 			[&](ast::lt const& lt) {
 				return eval_binary(env, *lt.left, *lt.right, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
