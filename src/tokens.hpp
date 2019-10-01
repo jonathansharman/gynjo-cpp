@@ -14,6 +14,18 @@ namespace gynjo::tok {
 	struct imp {
 		auto operator<=>(imp const&) const = default;
 	};
+	//! Token for "if" keyword.
+	struct if_ {
+		auto operator<=>(if_ const&) const = default;
+	};
+	//! Token for "then" keyword.
+	struct then {
+		auto operator<=>(then const&) const = default;
+	};
+	//! Token for "else" keyword.
+	struct else_ {
+		auto operator<=>(else_ const&) const = default;
+	};
 	//! Token for "=".
 	struct eq {
 		auto operator<=>(eq const&) const = default;
@@ -54,6 +66,10 @@ namespace gynjo::tok {
 	struct arrow {
 		auto operator<=>(arrow const&) const = default;
 	};
+	struct boolean {
+		bool value;
+		auto operator<=>(boolean const&) const = default;
+	};
 	//! Token for floating-point numberical literals.
 	struct num {
 		std::string rep;
@@ -66,7 +82,7 @@ namespace gynjo::tok {
 	};
 
 	//! Union type of all valid tokens.
-	using token = std::variant<imp, eq, plus, minus, mul, div, exp, lft, rht, com, arrow, num, sym>;
+	using token = std::variant<imp, if_, then, else_, eq, plus, minus, mul, div, exp, lft, rht, com, arrow, boolean, num, sym>;
 
 	//! Converts the token @p tok to a user-readable string.
 	inline auto to_string(token tok) -> std::string {
@@ -74,6 +90,9 @@ namespace gynjo::tok {
 		return match(
 			tok,
 			[](imp const&) { return "import"s; },
+			[](if_ const&) { return "if"s; },
+			[](then const&) { return "then"s; },
+			[](else_ const&) { return "else"s; },
 			[](eq const&) { return "="s; },
 			[](plus const&) { return "+"s; },
 			[](minus const&) { return "-"s; },
@@ -84,6 +103,7 @@ namespace gynjo::tok {
 			[](rht const&) { return ")"s; },
 			[](com const&) { return ","s; },
 			[](arrow const&) { return "->"s; },
+			[](boolean const& b) { return b.value ? "true"s : "false"s; },
 			[](num const& n) { return n.rep; },
 			[](sym const& s) { return s.name; });
 	}

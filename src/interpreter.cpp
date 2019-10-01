@@ -316,6 +316,7 @@ namespace gynjo {
 				}
 				return tup_val;
 			},
+			[](tok::boolean const& b) -> eval_result { return b; },
 			[](tok::num const& num) -> eval_result { return val::num{num.rep}; },
 			[&](tok::sym const& sym) -> eval_result {
 				if (auto it = env.vars.find(sym.name); it != env.vars.end()) {

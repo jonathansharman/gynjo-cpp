@@ -79,6 +79,10 @@ namespace gynjo {
 							// Return unmodified tuple.
 							: std::move(tup)};
 				},
+				// Boolean
+				[&](tok::boolean const& b) -> subparse_result {
+					return std::pair{it, b};
+				},
 				// Number
 				[&](tok::num const& num) -> subparse_result {
 					return std::pair{it, num};

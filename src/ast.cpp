@@ -137,6 +137,7 @@ namespace gynjo::ast {
 				result += ")";
 				return result;
 			},
+			[](tok::boolean const& b) { return ast::to_string(b); },
 			[](tok::num const& num) { return num.rep; },
 			[](tok::sym const& sym) { return sym.name; });
 	}

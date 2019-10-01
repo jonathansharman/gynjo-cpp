@@ -40,6 +40,7 @@ namespace gynjo::val {
 		using namespace std::string_literals;
 		return match(
 			val,
+			[](tok::boolean const& b) { return tok::to_string(b); },
 			[](num const& num) { return num.str(); },
 			[](tup const& tup) {
 				std::string result = "(";

@@ -21,30 +21,26 @@ namespace gynjo {
 			{std::regex{R"...(\s+)..."}, [](std::smatch const&) { return std::nullopt; }},
 			// Comment (ignored)
 			{std::regex{R"...(//.*)..."}, [](std::smatch const&) { return std::nullopt; }},
-			// =
+			// Operator/separator
 			{std::regex{R"...(=)..."}, [](std::smatch const&) { return tok::eq{}; }},
-			// +
 			{std::regex{R"...(\+)..."}, [](std::smatch const&) { return tok::plus{}; }},
-			// ->
 			{std::regex{R"...(->)..."}, [](std::smatch const&) { return tok::arrow{}; }},
-			// -
 			{std::regex{R"...(-)..."}, [](std::smatch const&) { return tok::minus{}; }},
-			// ** or ^
 			{std::regex{R"...((\*\*)|\^)..."}, [](std::smatch const&) { return tok::exp{}; }},
-			// *
 			{std::regex{R"...(\*)..."}, [](std::smatch const&) { return tok::mul{}; }},
-			// /
 			{std::regex{R"...(/)..."}, [](std::smatch const&) { return tok::div{}; }},
-			// (
 			{std::regex{R"...(\()..."}, [](std::smatch const&) { return tok::lft{}; }},
-			// )
 			{std::regex{R"...(\))..."}, [](std::smatch const&) { return tok::rht{}; }},
-			// ,
 			{std::regex{R"...(,)..."}, [](std::smatch const&) { return tok::com{}; }},
-			// Number
+			// Literal
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)..."}, [](std::smatch const& m) { return tok::num{m.str()}; }},
-			// import
+			{std::regex{R"...(true\b)..."}, [](std::smatch const&) { return tok::boolean{true}; }},
+			{std::regex{R"...(false\b)..."}, [](std::smatch const&) { return tok::boolean{false}; }},
+			// Key word
 			{std::regex{R"...(import\b)..."}, [](std::smatch const&) { return tok::imp{}; }},
+			{std::regex{R"...(if\b)..."}, [](std::smatch const&) { return tok::if_{}; }},
+			{std::regex{R"...(then\b)..."}, [](std::smatch const&) { return tok::then{}; }},
+			{std::regex{R"...(else\b)..."}, [](std::smatch const&) { return tok::else_{}; }},
 			// Symbol
 			{std::regex{R"...([a-zA-Z_]+)..."}, [](std::smatch const& m) { return tok::sym{m.str()}; }}};
 

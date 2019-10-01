@@ -23,6 +23,7 @@ namespace gynjo::ast {
 		struct cluster,
 		struct lambda,
 		struct tup,
+		tok::boolean,
 		tok::num,
 		tok::sym>;
 

@@ -19,7 +19,7 @@ namespace gynjo {
 		using num = boost::multiprecision::cpp_dec_float_100;
 
 		//! Union type of all Gynjo value types.
-		using value = std::variant<num, struct tup, struct closure>;
+		using value = std::variant<tok::boolean, num, struct tup, struct closure>;
 
 		//! Unique pointer to a Gynjo value.
 		using ptr = std::unique_ptr<value>;
