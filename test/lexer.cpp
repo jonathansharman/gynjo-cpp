@@ -63,8 +63,14 @@ TEST_SUITE("lexer") {
 			sym{"thens"},
 			then{},
 			sym{"elses"},
-			else_{}};
-		auto const actual = lex("imports import ifs if thens then elses else");
+			else_{},
+			sym{"ands"},
+			and_{},
+			sym{"ors"},
+			or_{},
+			sym{"nots"},
+			not_{}};
+		auto const actual = lex("imports import ifs if thens then elses else ands and ors or nots not");
 		CHECK(expected == actual.value());
 	}
 }

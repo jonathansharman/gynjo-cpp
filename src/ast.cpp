@@ -18,6 +18,47 @@ namespace gynjo::ast {
 		return symbol == that.symbol && *rhs == *that.rhs;
 	}
 
+	and_::and_(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
+
+	and_::and_(and_ const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
+
+	and_& and_::operator=(and_ const& that) {
+		left = make_node(*that.left);
+		right = make_node(*that.right);
+		return *this;
+	}
+
+	bool and_::operator==(and_ const& that) const {
+		return *left == *that.left && *right == *that.right;
+	}
+
+	or_::or_(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
+
+	or_::or_(or_ const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
+
+	or_& or_::operator=(or_ const& that) {
+		left = make_node(*that.left);
+		right = make_node(*that.right);
+		return *this;
+	}
+
+	bool or_::operator==(or_ const& that) const {
+		return *left == *that.left && *right == *that.right;
+	}
+
+	not_::not_(ptr expr) : expr{std::move(expr)} {}
+
+	not_::not_(not_ const& that) : expr{make_node(*that.expr)} {}
+
+	not_& not_::operator=(not_ const& that) {
+		expr = make_node(*that.expr);
+		return *this;
+	}
+
+	bool not_::operator==(not_ const& that) const {
+		return *expr == *that.expr;
+	}
+
 	eq::eq(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
 
 	eq::eq(eq const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
@@ -179,6 +220,9 @@ namespace gynjo::ast {
 			[](nop) { return "no-op"s; },
 			[](imp const& imp) { return "import " + imp.filename; },
 			[](assign const& assign) { return ast::to_string(assign.symbol) + " = " + to_string(*assign.rhs); },
+			[](and_ const& and_) { return fmt::format("({} and {})", to_string(*and_.left), to_string(*and_.right)); },
+			[](or_ const& or_) { return fmt::format("({} or {})", to_string(*or_.left), to_string(*or_.right)); },
+			[](not_ const& not_) { return fmt::format("(not {})", to_string(*not_.expr)); },
 			[](eq const& eq) { return fmt::format("({} == {})", to_string(*eq.left), to_string(*eq.right)); },
 			[](neq const& neq) { return fmt::format("({} != {})", to_string(*neq.left), to_string(*neq.right)); },
 			[](lt const& lt) { return fmt::format("({} < {})", to_string(*lt.left), to_string(*lt.right)); },

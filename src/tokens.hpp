@@ -30,6 +30,18 @@ namespace gynjo::tok {
 	struct else_ {
 		auto operator<=>(else_ const&) const noexcept = default;
 	};
+	//! Token for "and" keyword.
+	struct and_ {
+		auto operator<=>(and_ const&) const noexcept = default;
+	};
+	//! Token for "or" keyword.
+	struct or_ {
+		auto operator<=>(or_ const&) const noexcept = default;
+	};
+	//! Token for "not" keyword.
+	struct not_ {
+		auto operator<=>(not_ const&) const noexcept = default;
+	};
 	//! Token for "==".
 	struct eq {
 		auto operator<=>(eq const&) const noexcept = default;
@@ -107,7 +119,7 @@ namespace gynjo::tok {
 
 	//! Union type of all valid tokens.
 	using token =
-		std::variant<imp, assign, if_, then, else_, eq, neq, lt, leq, gt, geq, plus, minus, mul, div, exp, lft, rht, com, arrow, boolean, num, sym>;
+		std::variant<imp, assign, if_, then, else_, and_, or_, not_, eq, neq, lt, leq, gt, geq, plus, minus, mul, div, exp, lft, rht, com, arrow, boolean, num, sym>;
 
 	//! Converts the token @p tok to a user-readable string.
 	inline auto to_string(token tok) -> std::string {
@@ -119,6 +131,9 @@ namespace gynjo::tok {
 			[](if_ const&) { return "if"s; },
 			[](then const&) { return "then"s; },
 			[](else_ const&) { return "else"s; },
+			[](and_ const&) { return "and"s; },
+			[](or_ const&) { return "or"s; },
+			[](not_ const&) { return "not"s; },
 			[](eq const&) { return "=="s; },
 			[](neq const&) { return "!="s; },
 			[](lt const&) { return "<"s; },

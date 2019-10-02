@@ -126,6 +126,58 @@ namespace gynjo {
 					return expr_value;
 				});
 			},
+			[&](ast::and_ const& and_) -> eval_result {
+				// Get left.
+				auto const left_result = eval(env, *and_.left);
+				if (!left_result.has_value()) { return left_result; }
+				if (!std::holds_alternative<tok::boolean>(left_result.value())) {
+					return tl::unexpected{fmt::format(
+						"cannot take logical conjunction of non-boolean value {}", to_string(left_result.value()))};
+				}
+				bool const left = std::get<tok::boolean>(left_result.value()).value;
+				// Short-circuit if possible.
+				if (!left) { return tok::boolean{false}; }
+				// Get right.
+				auto const right_result = eval(env, *and_.right);
+				if (!right_result.has_value()) { return right_result; }
+				if (!std::holds_alternative<tok::boolean>(right_result.value())) {
+					return tl::unexpected{fmt::format(
+						"cannot take logical conjunction of non-boolean value {}", to_string(right_result.value()))};
+				}
+				auto const right = std::get<tok::boolean>(right_result.value()).value;
+				return tok::boolean{left && right};
+			},
+			[&](ast::or_ const& or_) -> eval_result {
+				// Get left.
+				auto const left_result = eval(env, *or_.left);
+				if (!left_result.has_value()) { return left_result; }
+				if (!std::holds_alternative<tok::boolean>(left_result.value())) {
+					return tl::unexpected{fmt::format(
+						"cannot take logical disjunction of non-boolean value {}", to_string(left_result.value()))};
+				}
+				bool const left = std::get<tok::boolean>(left_result.value()).value;
+				// Short-circuit if possible.
+				if (left) { return tok::boolean{true}; }
+				// Get right.
+				auto const right_result = eval(env, *or_.right);
+				if (!right_result.has_value()) { return right_result; }
+				if (!std::holds_alternative<tok::boolean>(right_result.value())) {
+					return tl::unexpected{fmt::format(
+						"cannot take logical disjunction of non-boolean value {}", to_string(right_result.value()))};
+				}
+				auto const right = std::get<tok::boolean>(right_result.value()).value;
+				return tok::boolean{left || right};
+			},
+			[&](ast::not_ const& not_) {
+				return eval_unary(env, *not_.expr, [](val::value const& val) -> eval_result {
+					return match(
+						val,
+						[](tok::boolean b) -> eval_result { return tok::boolean{!b.value}; },
+						[](auto const& b) -> eval_result {
+							return tl::unexpected{fmt::format("cannot take logical negation of {}", val::to_string(b))};
+						});
+				});
+			},
 			[&](ast::eq const& eq) {
 				return eval_binary(env, *eq.left, *eq.right, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(

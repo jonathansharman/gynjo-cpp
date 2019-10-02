@@ -18,6 +18,36 @@ TEST_SUITE("interpreter") {
 		CHECK(expected == actual.value());
 	}
 
+	TEST_CASE("logical operators") {
+		environment env;
+		val::value const t = tok::boolean{true};
+		val::value const f = tok::boolean{false};
+		SUBCASE("and") {
+			CHECK(f == eval(env, "false and false").value());
+			CHECK(f == eval(env, "false and true").value());
+			CHECK(f == eval(env, "true and false").value());
+			CHECK(t == eval(env, "true and true").value());
+		}
+		SUBCASE("or") {
+			CHECK(f == eval(env, "false and false").value());
+			CHECK(f == eval(env, "false and true").value());
+			CHECK(f == eval(env, "true and false").value());
+			CHECK(t == eval(env, "true and true").value());
+		}
+		SUBCASE("not") {
+			CHECK(f == eval(env, "not true").value());
+			CHECK(t == eval(env, "not false").value());
+		}
+		SUBCASE("short-circuiting") {
+			CHECK(f == eval(env, "false and 1/0").value());
+			CHECK(t == eval(env, "true or 1/0").value());
+		}
+		SUBCASE("and precedes or") {
+			CHECK(t == eval(env, "true or true and false").value());
+			CHECK(t == eval(env, "false and true or true").value());
+		}
+	}
+
 	TEST_CASE("comparisons") {
 		environment env;
 		val::value const t = tok::boolean{true};
@@ -49,6 +79,12 @@ TEST_SUITE("interpreter") {
 			CHECK(f == eval(env, "1 >= 2").value());
 			CHECK(t == eval(env, "1 >= 1").value());
 			CHECK(t == eval(env, "2 >= 1").value());
+		}
+		SUBCASE("comparisons and logical operators") {
+			CHECK(t == eval(env, "1 == 1 and 2 == 2").value());
+			CHECK(f == eval(env, "1 == 1 and 2 == 3").value());
+			CHECK(t == eval(env, "1 == 2 or 3 == 3").value());
+			CHECK(f == eval(env, "1 == 2 or 3 == 4").value());
 		}
 		SUBCASE("non-numbers are equal-checkable but not comparable") {
 			// Booleans and tuples can be equality-checked.
@@ -97,9 +133,16 @@ TEST_SUITE("interpreter") {
 
 	TEST_CASE("tuple evaluation") {
 		environment env;
-		val::value const expected = val::make_tup(val::num{1}, val::make_tup(val::num{2}, val::num{3}));
-		auto const actual = eval(env, "(1, (2, 3))");
-		CHECK(expected == actual.value());
+		SUBCASE("nested tuple of numbers") {
+			val::value const expected = val::make_tup(val::num{1}, val::make_tup(val::num{2}, val::num{3}));
+			auto const actual = eval(env, "(1, (2, 3))");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("nested tuple of numbers and booleans") {
+			val::value const expected = val::make_tup(tok::boolean{true}, val::make_tup(val::num{2}, tok::boolean{false}));
+			auto const actual = eval(env, "(1 < 2, (2, false))");
+			CHECK(expected == actual.value());
+		}
 	}
 
 	TEST_CASE("simple function application") {

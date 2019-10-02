@@ -23,7 +23,7 @@ namespace gynjo {
 			{std::regex{R"...(\s+)...", flags}, [](sv) { return std::nullopt; }},
 			// Comment (ignored)
 			{std::regex{R"...(//.*)...", flags}, [](sv) { return std::nullopt; }},
-			// Operator/separator
+			// Operators/separators
 			{std::regex{R"...(==)...", flags}, [](sv) { return tok::eq{}; }},
 			{std::regex{R"...(=)...", flags}, [](sv) { return tok::assign{}; }},
 			{std::regex{R"...(!=)...", flags}, [](sv) { return tok::neq{}; }},
@@ -40,15 +40,18 @@ namespace gynjo {
 			{std::regex{R"...(\()...", flags}, [](sv) { return tok::lft{}; }},
 			{std::regex{R"...(\))...", flags}, [](sv) { return tok::rht{}; }},
 			{std::regex{R"...(,)...", flags}, [](sv) { return tok::com{}; }},
-			// Literal
+			// Literals
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)...", flags}, [](sv sv) { return tok::num{sv.data()}; }},
 			{std::regex{R"...(true\b)...", flags}, [](sv) { return tok::boolean{true}; }},
 			{std::regex{R"...(false\b)...", flags}, [](sv) { return tok::boolean{false}; }},
-			// Key word
+			// Keywords
 			{std::regex{R"...(import\b)...", flags}, [](sv) { return tok::imp{}; }},
 			{std::regex{R"...(if\b)...", flags}, [](sv) { return tok::if_{}; }},
 			{std::regex{R"...(then\b)...", flags}, [](sv) { return tok::then{}; }},
 			{std::regex{R"...(else\b)...", flags}, [](sv) { return tok::else_{}; }},
+			{std::regex{R"...(and\b)...", flags}, [](sv) { return tok::and_{}; }},
+			{std::regex{R"...(or\b)...", flags}, [](sv) { return tok::or_{}; }},
+			{std::regex{R"...(not\b)...", flags}, [](sv) { return tok::not_{}; }},
 			// Symbol
 			{std::regex{R"...([a-zA-Z_]+)...", flags}, [](sv sv) { return tok::sym{sv.data()}; }}};
 	}

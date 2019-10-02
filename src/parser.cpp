@@ -14,14 +14,14 @@ namespace gynjo {
 		using token_it = std::vector<tok::token>::const_iterator;
 		using subparse_result = tl::expected<std::pair<token_it, ast::node>, std::string>;
 
-		auto parse_terms(token_it begin, token_it end) -> subparse_result;
+		auto parse_expr(token_it begin, token_it end) -> subparse_result;
 
 		//! Parses a function body.
 		auto parse_body(token_it begin, token_it end) -> subparse_result {
 			if (begin == end || !std::holds_alternative<tok::arrow>(*begin)) {
 				return tl::unexpected{"expected function body"s};
 			}
-			return parse_terms(begin + 1, end);
+			return parse_expr(begin + 1, end);
 		}
 
 		//! Parses a Gynjo value.
@@ -37,7 +37,7 @@ namespace gynjo {
 					// Keep track of whether all tup elements are symbols (possible lambda parameter list).
 					bool could_be_lambda = true;
 					// Try to parse an expression.
-					auto first_result = parse_terms(it, end);
+					auto first_result = parse_expr(it, end);
 					if (first_result.has_value()) {
 						auto [first_end, first] = std::move(first_result.value());
 						it = first_end;
@@ -46,7 +46,7 @@ namespace gynjo {
 						// Try to parse additional comma-delimited expressions.
 						while (it != end && std::holds_alternative<tok::com>(*it)) {
 							++it;
-							auto next_result = parse_terms(it, end);
+							auto next_result = parse_expr(it, end);
 							if (next_result.has_value()) {
 								auto [next_end, next] = std::move(next_result.value());
 								it = next_end;
@@ -227,7 +227,7 @@ namespace gynjo {
 		auto parse_comparisons(token_it begin, token_it end) -> subparse_result {
 			return parse_terms(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
 				auto it = std::move(result.first);
-				auto terms = std::move(result.second);
+				auto cmps = std::move(result.second);
 				auto is_comparison = [](tok::token const& token) {
 					return match(
 						token,
@@ -242,35 +242,35 @@ namespace gynjo {
 					auto next_result = parse_terms(it + 1, end);
 					if (next_result.has_value()) {
 						it = std::move(next_result.value().first);
-						auto next_term = std::move(next_result.value().second);
+						auto next_cmp = std::move(next_result.value().second);
 						match(
 							token,
 							[&](tok::lt) {
-								terms = ast::lt{make_node(std::move(terms)), make_node(std::move(next_term))};
+								cmps = ast::lt{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
 							},
 							[&](tok::leq) {
-								terms = ast::leq{make_node(std::move(terms)), make_node(std::move(next_term))};
+								cmps = ast::leq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
 							},
 							[&](tok::gt) {
-								terms = ast::gt{make_node(std::move(terms)), make_node(std::move(next_term))};
+								cmps = ast::gt{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
 							},
 							[&](tok::geq) {
-								terms = ast::geq{make_node(std::move(terms)), make_node(std::move(next_term))};
+								cmps = ast::geq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
 							},
 							[&](auto const&) { /*unreachable*/ });
 					} else {
-						return tl::unexpected{"expected term"s};
+						return tl::unexpected{"expected comparison"s};
 					}
 				}
-				return std::pair{it, std::move(terms)};
+				return std::pair{it, std::move(cmps)};
 			});
 		}
 
-		//! Parses a series of comparison checks (not including equals or not equals).
-		auto parse_eq_check(token_it begin, token_it end) -> subparse_result {
+		//! Parses a series of equality/inequality checks.
+		auto parse_eq_checks(token_it begin, token_it end) -> subparse_result {
 			return parse_comparisons(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
 				auto it = std::move(result.first);
-				auto terms = std::move(result.second);
+				auto cmps = std::move(result.second);
 				auto is_comparison = [](tok::token const& token) {
 					return match(
 						token,
@@ -283,27 +283,84 @@ namespace gynjo {
 					auto next_result = parse_comparisons(it + 1, end);
 					if (next_result.has_value()) {
 						it = std::move(next_result.value().first);
-						auto next_term = std::move(next_result.value().second);
+						auto next_cmp = std::move(next_result.value().second);
 						match(
 							token,
 							[&](tok::eq) {
-								terms = ast::eq{make_node(std::move(terms)), make_node(std::move(next_term))};
+								cmps = ast::eq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
 							},
 							[&](tok::neq) {
-								terms = ast::neq{make_node(std::move(terms)), make_node(std::move(next_term))};
+								cmps = ast::neq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
 							},
 							[&](auto const&) { /*unreachable*/ });
 					} else {
-						return tl::unexpected{"expected term"s};
+						return tl::unexpected{"expected equality check"s};
 					}
 				}
-				return std::pair{it, std::move(terms)};
+				return std::pair{it, std::move(cmps)};
 			});
 		}
 
+		//! Parses a series of logical conjunctions.
+		auto parse_conjunctions(token_it begin, token_it end) -> subparse_result {
+			return parse_eq_checks(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
+				auto it = std::move(result.first);
+				auto conjunctions = std::move(result.second);
+				while (it != end && std::holds_alternative<tok::and_>(*it)) {
+					auto const token = *it;
+					auto next_result = parse_eq_checks(it + 1, end);
+					if (next_result.has_value()) {
+						it = std::move(next_result.value().first);
+						auto next_conjunction = std::move(next_result.value().second);
+						conjunctions = ast::and_{make_node(std::move(conjunctions)), make_node(std::move(next_conjunction))};
+					} else {
+						return tl::unexpected{"expected conjunction"s};
+					}
+				}
+				return std::pair{it, std::move(conjunctions)};
+			});
+		}
+
+		//! Parses a series of logical disjunctions.
+		auto parse_disjunctions(token_it begin, token_it end) -> subparse_result {
+			return parse_conjunctions(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
+				auto it = std::move(result.first);
+				auto disjunctions = std::move(result.second);
+				while (it != end && std::holds_alternative<tok::or_>(*it)) {
+					auto const token = *it;
+					auto next_result = parse_conjunctions(it + 1, end);
+					if (next_result.has_value()) {
+						it = std::move(next_result.value().first);
+						auto next_disjunction = std::move(next_result.value().second);
+						disjunctions = ast::or_{make_node(std::move(disjunctions)), make_node(std::move(next_disjunction))};
+					} else {
+						return tl::unexpected{"expected disjunction"s};
+					}
+				}
+				return std::pair{it, std::move(disjunctions)};
+			});
+		}
+
+		//! Parses a logical negation. Note that negation is right-associative.
+		auto parse_negation(token_it begin, token_it end) -> subparse_result {
+			if (begin == end) { return tl::unexpected{"expected expression"s}; }
+			if (std::holds_alternative<tok::not_>(*begin)) {
+				auto neg_result = parse_negation(begin + 1, end);
+				if (neg_result.has_value()) {
+					auto neg_end = std::move(neg_result.value().first);
+					auto neg = std::move(neg_result.value().second);
+					return std::pair{neg_end, ast::not_{make_node(neg)}};
+				} else {
+					return tl::unexpected{"expected negation"s};
+				}
+			} else {
+				return parse_disjunctions(begin, end);
+			}
+		}
+
 		//! Parses an expression.
-		auto parse_expr(token_it begin, token_it end) {
-			return parse_eq_check(begin, end);
+		auto parse_expr(token_it begin, token_it end) -> subparse_result {
+			return parse_negation(begin, end);
 		}
 
 		//! Parses an assignment operation.

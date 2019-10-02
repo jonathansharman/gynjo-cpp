@@ -18,6 +18,9 @@ namespace gynjo::ast {
 		struct nop,
 		struct imp,
 		struct assign,
+		struct and_,
+		struct or_,
+		struct not_,
 		struct eq,
 		struct neq,
 		struct lt,
@@ -62,6 +65,53 @@ namespace gynjo::ast {
 		assign& operator=(assign&&) noexcept = default;
 
 		bool operator==(assign const& that) const;
+	};
+
+	//! Logical AND expression.
+	struct and_ {
+		ptr left;
+		ptr right;
+
+		and_(ptr left, ptr right);
+
+		and_(and_ const& that);
+		and_(and_&&) noexcept = default;
+
+		and_& operator=(and_ const& that);
+		and_& operator=(and_&&) noexcept = default;
+
+		bool operator==(and_ const& that) const;
+	};
+
+	//! Logical OR expression.
+	struct or_ {
+		ptr left;
+		ptr right;
+
+		or_(ptr left, ptr right);
+
+		or_(or_ const& that);
+		or_(or_&&) noexcept = default;
+
+		or_& operator=(or_ const& that);
+		or_& operator=(or_&&) noexcept = default;
+
+		bool operator==(or_ const& that) const;
+	};
+
+	//! Logical NOT expression.
+	struct not_ {
+		ptr expr;
+
+		not_(ptr expr);
+
+		not_(not_ const& that);
+		not_(not_&&) noexcept = default;
+
+		not_& operator=(not_ const& that);
+		not_& operator=(not_&&) noexcept = default;
+
+		bool operator==(not_ const& that) const;
 	};
 
 	//! Less-than comparison expression.
