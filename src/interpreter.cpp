@@ -126,6 +126,23 @@ namespace gynjo {
 					return expr_value;
 				});
 			},
+			[&](ast::cond const& cond) {
+				return eval(env, *cond.test).and_then([&](val::value test_value) -> eval_result {
+					return match(
+						test_value,
+						[&](tok::boolean test) -> eval_result {
+							if (test.value) {
+								return eval(env, *cond.if_true);
+							} else {
+								return eval(env, *cond.if_false);
+							}
+						},
+						[](auto const& v) -> eval_result {
+							return tl::unexpected{
+								fmt::format("expected boolean in conditional test, found {}", val::to_string(v))};
+						});
+				});
+			},
 			[&](ast::and_ const& and_) -> eval_result {
 				// Get left.
 				auto const left_result = eval(env, *and_.left);
@@ -468,7 +485,9 @@ namespace gynjo {
 		if (lex_result.has_value()) {
 			parse_result const parse_result = parse(lex_result.value());
 			if (parse_result.has_value()) {
-				return eval(env, parse_result.value());
+				auto eval_result = eval(env, parse_result.value());
+				if (eval_result.has_value()) { env.vars["ans"] = eval_result.value(); }
+				return eval_result;
 			} else {
 				return tl::unexpected{"Parse error: " + parse_result.error()};
 			}

@@ -205,18 +205,18 @@ namespace gynjo {
 			return parse_cluster(begin, end).and_then([&](std::pair<token_it, ast::node> result) -> subparse_result {
 				auto [it, terms] = std::move(result);
 				while (it != end && (std::holds_alternative<tok::plus>(*it) || std::holds_alternative<tok::minus>(*it))) {
+					// Parse next result.
 					auto const token = *it;
 					auto next_result = parse_cluster(it + 1, end);
-					if (next_result.has_value()) {
-						auto [next_end, next_term] = std::move(next_result.value());
-						it = next_end;
-						if (std::holds_alternative<tok::plus>(token)) {
-							terms = ast::add{make_node(std::move(terms)), make_node(std::move(next_term))};
-						} else {
-							terms = ast::sub{make_node(std::move(terms)), make_node(std::move(next_term))};
-						}
+					if (!next_result.has_value()) { return tl::unexpected{"expected term"s}; }
+					// Extract result.
+					it = next_result.value().first;
+					auto next_term = std::move(next_result.value().second);
+					// Incorporate into AST.
+					if (std::holds_alternative<tok::plus>(token)) {
+						terms = ast::add{make_node(std::move(terms)), make_node(std::move(next_term))};
 					} else {
-						return tl::unexpected{"expected term"s};
+						terms = ast::sub{make_node(std::move(terms)), make_node(std::move(next_term))};
 					}
 				}
 				return std::pair{it, std::move(terms)};
@@ -238,29 +238,30 @@ namespace gynjo {
 						[](auto const&) { return false; });
 				};
 				while (it != end && is_comparison(*it)) {
+					// Store token to match on later.
 					auto const token = *it;
+					// Parse next result.
 					auto next_result = parse_terms(it + 1, end);
-					if (next_result.has_value()) {
-						it = std::move(next_result.value().first);
-						auto next_cmp = std::move(next_result.value().second);
-						match(
-							token,
-							[&](tok::lt) {
-								cmps = ast::lt{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
-							},
-							[&](tok::leq) {
-								cmps = ast::leq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
-							},
-							[&](tok::gt) {
-								cmps = ast::gt{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
-							},
-							[&](tok::geq) {
-								cmps = ast::geq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
-							},
-							[&](auto const&) { /*unreachable*/ });
-					} else {
-						return tl::unexpected{"expected comparison"s};
-					}
+					if (!next_result.has_value()) { return tl::unexpected{"expected comparison"s}; }
+					// Extract result.
+					it = std::move(next_result.value().first);
+					auto next_cmp = std::move(next_result.value().second);
+					// Incorporate into AST.
+					match(
+						token,
+						[&](tok::lt) {
+							cmps = ast::lt{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
+						},
+						[&](tok::leq) {
+							cmps = ast::leq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
+						},
+						[&](tok::gt) {
+							cmps = ast::gt{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
+						},
+						[&](tok::geq) {
+							cmps = ast::geq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
+						},
+						[&](auto const&) { /*unreachable*/ });
 				}
 				return std::pair{it, std::move(cmps)};
 			});
@@ -279,23 +280,23 @@ namespace gynjo {
 						[](auto const&) { return false; });
 				};
 				while (it != end && is_comparison(*it)) {
+					// Parse next result.
 					auto const token = *it;
 					auto next_result = parse_comparisons(it + 1, end);
-					if (next_result.has_value()) {
-						it = std::move(next_result.value().first);
-						auto next_cmp = std::move(next_result.value().second);
-						match(
-							token,
-							[&](tok::eq) {
-								cmps = ast::eq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
-							},
-							[&](tok::neq) {
-								cmps = ast::neq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
-							},
-							[&](auto const&) { /*unreachable*/ });
-					} else {
-						return tl::unexpected{"expected equality check"s};
-					}
+					if (!next_result.has_value()) { return tl::unexpected{"expected equality check"s}; }
+					// Extract result.
+					it = std::move(next_result.value().first);
+					auto next_cmp = std::move(next_result.value().second);
+					// Incorporate into AST.
+					match(
+						token,
+						[&](tok::eq) {
+							cmps = ast::eq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
+						},
+						[&](tok::neq) {
+							cmps = ast::neq{make_node(std::move(cmps)), make_node(std::move(next_cmp))};
+						},
+						[&](auto const&) { /*unreachable*/ });
 				}
 				return std::pair{it, std::move(cmps)};
 			});
@@ -307,15 +308,14 @@ namespace gynjo {
 				auto it = std::move(result.first);
 				auto conjunctions = std::move(result.second);
 				while (it != end && std::holds_alternative<tok::and_>(*it)) {
-					auto const token = *it;
+					// Parse next result.
 					auto next_result = parse_eq_checks(it + 1, end);
-					if (next_result.has_value()) {
-						it = std::move(next_result.value().first);
-						auto next_conjunction = std::move(next_result.value().second);
-						conjunctions = ast::and_{make_node(std::move(conjunctions)), make_node(std::move(next_conjunction))};
-					} else {
-						return tl::unexpected{"expected conjunction"s};
-					}
+					if (!next_result.has_value()) { return tl::unexpected{"expected conjunction"s}; }
+					// Extract result.
+					it = std::move(next_result.value().first);
+					auto next_conjunction = std::move(next_result.value().second);
+					// Incorporate into AST.
+					conjunctions = ast::and_{make_node(std::move(conjunctions)), make_node(std::move(next_conjunction))};
 				}
 				return std::pair{it, std::move(conjunctions)};
 			});
@@ -327,15 +327,16 @@ namespace gynjo {
 				auto it = std::move(result.first);
 				auto disjunctions = std::move(result.second);
 				while (it != end && std::holds_alternative<tok::or_>(*it)) {
+					// Store token to match on later.
 					auto const token = *it;
+					// Parse next result.
 					auto next_result = parse_conjunctions(it + 1, end);
-					if (next_result.has_value()) {
-						it = std::move(next_result.value().first);
-						auto next_disjunction = std::move(next_result.value().second);
-						disjunctions = ast::or_{make_node(std::move(disjunctions)), make_node(std::move(next_disjunction))};
-					} else {
-						return tl::unexpected{"expected disjunction"s};
-					}
+					if (!next_result.has_value()) { return tl::unexpected{"expected disjunction"s}; }
+					// Extract result.
+					it = std::move(next_result.value().first);
+					auto next_disjunction = std::move(next_result.value().second);
+					// Incorporate into AST.
+					disjunctions = ast::or_{make_node(std::move(disjunctions)), make_node(std::move(next_disjunction))};
 				}
 				return std::pair{it, std::move(disjunctions)};
 			});
@@ -346,21 +347,62 @@ namespace gynjo {
 			if (begin == end) { return tl::unexpected{"expected expression"s}; }
 			if (std::holds_alternative<tok::not_>(*begin)) {
 				auto neg_result = parse_negation(begin + 1, end);
-				if (neg_result.has_value()) {
-					auto neg_end = std::move(neg_result.value().first);
-					auto neg = std::move(neg_result.value().second);
-					return std::pair{neg_end, ast::not_{make_node(neg)}};
-				} else {
-					return tl::unexpected{"expected negation"s};
-				}
+				if (!neg_result.has_value()) { return tl::unexpected{"expected negation"s}; }
+				auto neg_end = std::move(neg_result.value().first);
+				auto neg = std::move(neg_result.value().second);
+				return std::pair{neg_end, ast::not_{make_node(neg)}};
 			} else {
 				return parse_disjunctions(begin, end);
 			}
 		}
 
+		//! Parses a binary or ternary conditional expression.
+		auto parse_conditional(token_it begin, token_it end) -> subparse_result {
+			if (begin == end || !std::holds_alternative<tok::if_>(*begin)) {
+				return tl::unexpected{"expected \"if\""s};
+			}
+			auto it = begin + 1;
+			// Parse test expression.
+			auto test_result = parse_expr(it, end);
+			if (!test_result.has_value()) { return tl::unexpected{"expected test expression"s}; }
+			it = test_result.value().first;
+			// Parse "then".
+			if (it == end || !std::holds_alternative<tok::then>(*it)) {
+				return tl::unexpected{"expected \"then\" in conditional expression"s};
+			}
+			++it;
+			// Parse expression if true.
+			auto true_result = parse_expr(it, end);
+			if (!true_result.has_value()) { return tl::unexpected{"expected true case in conditional expression"s}; }
+			it = true_result.value().first;
+			// Try to parse "else".
+			if (it != end && std::holds_alternative<tok::else_>(*it)) {
+				++it;
+				// Parse expression if false.
+				auto false_result = parse_expr(it, end);
+				if (!false_result.has_value()) {
+					return tl::unexpected{"expected false case in conditional expression"s};
+				}
+				it = false_result.value().first;
+				return std::pair{it,
+					ast::cond{//
+						make_node(std::move(test_result.value().second)),
+						make_node(std::move(true_result.value().second)),
+						make_node(std::move(false_result.value().second))}};
+			} else {
+				// Empty else expression.
+				return std::pair{it,
+					ast::cond{//
+						make_node(std::move(test_result.value().second)),
+						make_node(std::move(true_result.value().second)),
+						// Defaults to empty tuple.
+						make_node(ast::make_tup())}};
+			}
+		}
+
 		//! Parses an expression.
 		auto parse_expr(token_it begin, token_it end) -> subparse_result {
-			return parse_negation(begin, end);
+			return parse_conditional(begin, end).or_else([&](auto const&) { return parse_negation(begin, end); });
 		}
 
 		//! Parses an assignment operation.
@@ -407,17 +449,12 @@ namespace gynjo {
 		auto parse_statement(token_it begin, token_it end) -> subparse_result {
 			// Empty input is a no-op.
 			if (begin == end) { return std::pair{end, ast::nop{}}; }
-			// Importation
-			auto import_result = parse_import(begin, end);
-			if (import_result.has_value()) { return import_result; }
-			// Assignment
-			auto assignment_result = parse_assignment(begin, end);
-			if (assignment_result.has_value()) { return assignment_result; }
-			// Expression
-			auto expression_result = parse_expr(begin, end);
-			if (expression_result.has_value()) { return expression_result; }
-			// Unrecognized statement
-			return tl::unexpected{"expected assignment or expression"s};
+			// Otherwise, try import...
+			return parse_import(begin, end)
+				// ...assignment...
+				.or_else([&](auto const&) { return parse_assignment(begin, end); })
+				// ...or expression.
+				.or_else([&](auto const&) { return parse_expr(begin, end); });
 		}
 
 		//! Parses all tokens from @p begin to @p end, checking that all input is used.

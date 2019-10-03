@@ -18,6 +18,23 @@ namespace gynjo::ast {
 		return symbol == that.symbol && *rhs == *that.rhs;
 	}
 
+	cond::cond(ptr test, ptr if_true, ptr if_false)
+		: test{std::move(test)}, if_true{std::move(if_true)}, if_false{std::move(if_false)} {}
+
+	cond::cond(cond const& that)
+		: test{make_node(*that.test)}, if_true{make_node(*that.if_true)}, if_false{make_node(*that.if_false)} {}
+
+	cond& cond::operator=(cond const& that) {
+		test = make_node(*that.test);
+		if_true = make_node(*that.if_true);
+		if_false = make_node(*that.if_false);
+		return *this;
+	}
+
+	bool cond::operator==(cond const& that) const {
+		return *test == *that.test && *if_true == *that.if_true && *if_false == *that.if_false;
+	}
+
 	and_::and_(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
 
 	and_::and_(and_ const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
@@ -220,6 +237,10 @@ namespace gynjo::ast {
 			[](nop) { return "no-op"s; },
 			[](imp const& imp) { return "import " + imp.filename; },
 			[](assign const& assign) { return ast::to_string(assign.symbol) + " = " + to_string(*assign.rhs); },
+			[](cond const& cond) {
+				return fmt::format(
+					"(if {} then {} else {})", to_string(*cond.test), to_string(*cond.if_true), to_string(*cond.if_false));
+			},
 			[](and_ const& and_) { return fmt::format("({} and {})", to_string(*and_.left), to_string(*and_.right)); },
 			[](or_ const& or_) { return fmt::format("({} or {})", to_string(*or_.left), to_string(*or_.right)); },
 			[](not_ const& not_) { return fmt::format("(not {})", to_string(*not_.expr)); },

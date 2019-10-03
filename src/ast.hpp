@@ -18,6 +18,7 @@ namespace gynjo::ast {
 		struct nop,
 		struct imp,
 		struct assign,
+		struct cond,
 		struct and_,
 		struct or_,
 		struct not_,
@@ -65,6 +66,23 @@ namespace gynjo::ast {
 		assign& operator=(assign&&) noexcept = default;
 
 		bool operator==(assign const& that) const;
+	};
+
+	//! Conditional expression - if-then or if-then-else.
+	struct cond {
+		ptr test;
+		ptr if_true;
+		ptr if_false;
+
+		cond(ptr test, ptr if_true, ptr if_false);
+
+		cond(cond const& that);
+		cond(cond&&) noexcept = default;
+
+		cond& operator=(cond const& that);
+		cond& operator=(cond&&) noexcept = default;
+
+		bool operator==(cond const& that) const;
 	};
 
 	//! Logical AND expression.

@@ -40,7 +40,7 @@ namespace gynjo {
 			{std::regex{R"...(\()...", flags}, [](sv) { return tok::lft{}; }},
 			{std::regex{R"...(\))...", flags}, [](sv) { return tok::rht{}; }},
 			{std::regex{R"...(,)...", flags}, [](sv) { return tok::com{}; }},
-			// Literals
+			// Value literals
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)...", flags}, [](sv sv) { return tok::num{sv.data()}; }},
 			{std::regex{R"...(true\b)...", flags}, [](sv) { return tok::boolean{true}; }},
 			{std::regex{R"...(false\b)...", flags}, [](sv) { return tok::boolean{false}; }},

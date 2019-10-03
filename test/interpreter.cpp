@@ -37,6 +37,7 @@ TEST_SUITE("interpreter") {
 		SUBCASE("not") {
 			CHECK(f == eval(env, "not true").value());
 			CHECK(t == eval(env, "not false").value());
+			CHECK(t == eval(env, "not false and false").value());
 		}
 		SUBCASE("short-circuiting") {
 			CHECK(f == eval(env, "false and 1/0").value());
@@ -107,6 +108,25 @@ TEST_SUITE("interpreter") {
 		SUBCASE("comparison precedes equality") {
 			CHECK(t == eval(env, "1 < 2 == 2 < 3").value());
 			CHECK(t == eval(env, "1 > 2 != 2 < 3").value());
+		}
+	}
+
+	TEST_CASE("conditional expressions") {
+		environment env;
+		SUBCASE("true is lazy") {
+			val::value const expected = 1;
+			auto const actual = eval(env, "if false then 1/0 else 1");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("false is lazy") {
+			val::value const expected = 1;
+			auto const actual = eval(env, "if true then 1 else 1/0");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("no else expression") {
+			val::value const expected = val::make_tup();
+			auto const actual = eval(env, "if false then 1");
+			CHECK(expected == actual.value());
 		}
 	}
 

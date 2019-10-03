@@ -53,6 +53,4 @@ SpacesInAngles: 'false'
 SpacesInParentheses: 'false'
 Standard: Auto
 TabWidth: '4'
-UseTab: ForContinuationAndIndentation
-
-...
+UseTab: 'Always'
