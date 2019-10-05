@@ -21,9 +21,6 @@ namespace gynjo {
 		//! Union type of all Gynjo value types.
 		using value = std::variant<tok::boolean, num, struct tup, struct closure>;
 
-		//! Unique pointer to a Gynjo value.
-		using ptr = std::unique_ptr<value>;
-
 		//! A function along with the environment in which it was called.
 		struct closure {
 			ast::lambda lambda;
@@ -42,10 +39,6 @@ namespace gynjo {
 			//! Because of the halting problem, this just does shallow equality checking on the body.
 			bool operator==(closure const& other) const noexcept = default;
 		};
-
-		//! Convenience function for creating a Gynjo value pointer from a value @p val.
-		template <typename T>
-		auto make_value(T&& val) -> ptr;
 
 		//! Tuple of Gynjo values.
 		struct tup {
@@ -68,11 +61,6 @@ namespace gynjo {
 			auto elems = std::make_unique<std::vector<value>>();
 			(elems->push_back(std::move(args)), ...);
 			return tup{std::move(elems)};
-		}
-
-		template <typename T>
-		auto make_value(T&& val) -> ptr {
-			return std::make_unique<gynjo::val::value>(std::forward<T>(val));
 		}
 
 		//! Converts the value @p val to a user-readable string.

@@ -37,8 +37,8 @@ namespace gynjo::ast {
 		tok::num,
 		tok::sym>;
 
-	//! Unique pointer to an AST node.
-	using ptr = std::unique_ptr<node>;
+	//! Shared pointer to an AST node.
+	using ptr = std::shared_ptr<node>;
 
 	//! No-op - statement that does nothing.
 	struct nop {
@@ -57,14 +57,6 @@ namespace gynjo::ast {
 		tok::sym symbol;
 		ptr rhs;
 
-		explicit assign(tok::sym symbol, ptr rhs);
-
-		assign(assign const& that);
-		assign(assign&&) noexcept = default;
-
-		assign& operator=(assign const& that);
-		assign& operator=(assign&&) noexcept = default;
-
 		bool operator==(assign const& that) const;
 	};
 
@@ -74,14 +66,6 @@ namespace gynjo::ast {
 		ptr if_true;
 		ptr if_false;
 
-		cond(ptr test, ptr if_true, ptr if_false);
-
-		cond(cond const& that);
-		cond(cond&&) noexcept = default;
-
-		cond& operator=(cond const& that);
-		cond& operator=(cond&&) noexcept = default;
-
 		bool operator==(cond const& that) const;
 	};
 
@@ -89,14 +73,6 @@ namespace gynjo::ast {
 	struct and_ {
 		ptr left;
 		ptr right;
-
-		and_(ptr left, ptr right);
-
-		and_(and_ const& that);
-		and_(and_&&) noexcept = default;
-
-		and_& operator=(and_ const& that);
-		and_& operator=(and_&&) noexcept = default;
 
 		bool operator==(and_ const& that) const;
 	};
@@ -106,28 +82,12 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		or_(ptr left, ptr right);
-
-		or_(or_ const& that);
-		or_(or_&&) noexcept = default;
-
-		or_& operator=(or_ const& that);
-		or_& operator=(or_&&) noexcept = default;
-
 		bool operator==(or_ const& that) const;
 	};
 
 	//! Logical NOT expression.
 	struct not_ {
 		ptr expr;
-
-		not_(ptr expr);
-
-		not_(not_ const& that);
-		not_(not_&&) noexcept = default;
-
-		not_& operator=(not_ const& that);
-		not_& operator=(not_&&) noexcept = default;
 
 		bool operator==(not_ const& that) const;
 	};
@@ -137,14 +97,6 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		eq(ptr left, ptr right);
-
-		eq(eq const& that);
-		eq(eq&&) noexcept = default;
-
-		eq& operator=(eq const& that);
-		eq& operator=(eq&&) noexcept = default;
-
 		bool operator==(eq const& that) const;
 	};
 
@@ -152,14 +104,6 @@ namespace gynjo::ast {
 	struct neq {
 		ptr left;
 		ptr right;
-
-		neq(ptr left, ptr right);
-
-		neq(neq const& that);
-		neq(neq&&) noexcept = default;
-
-		neq& operator=(neq const& that);
-		neq& operator=(neq&&) noexcept = default;
 
 		bool operator==(neq const& that) const;
 	};
@@ -169,14 +113,6 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		lt(ptr left, ptr right);
-
-		lt(lt const& that);
-		lt(lt&&) noexcept = default;
-
-		lt& operator=(lt const& that);
-		lt& operator=(lt&&) noexcept = default;
-
 		bool operator==(lt const& that) const;
 	};
 
@@ -184,14 +120,6 @@ namespace gynjo::ast {
 	struct leq {
 		ptr left;
 		ptr right;
-
-		leq(ptr left, ptr right);
-
-		leq(leq const& that);
-		leq(leq&&) noexcept = default;
-
-		leq& operator=(leq const& that);
-		leq& operator=(leq&&) noexcept = default;
 
 		bool operator==(leq const& that) const;
 	};
@@ -201,14 +129,6 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		gt(ptr left, ptr right);
-
-		gt(gt const& that);
-		gt(gt&&) noexcept = default;
-
-		gt& operator=(gt const& that);
-		gt& operator=(gt&&) noexcept = default;
-
 		bool operator==(gt const& that) const;
 	};
 
@@ -216,14 +136,6 @@ namespace gynjo::ast {
 	struct geq {
 		ptr left;
 		ptr right;
-
-		geq(ptr left, ptr right);
-
-		geq(geq const& that);
-		geq(geq&&) noexcept = default;
-
-		geq& operator=(geq const& that);
-		geq& operator=(geq&&) noexcept = default;
 
 		bool operator==(geq const& that) const;
 	};
@@ -233,14 +145,6 @@ namespace gynjo::ast {
 		ptr addend1;
 		ptr addend2;
 
-		add(ptr addend1, ptr addend2);
-
-		add(add const& that);
-		add(add&&) noexcept = default;
-
-		add& operator=(add const& that);
-		add& operator=(add&&) noexcept = default;
-
 		bool operator==(add const& that) const;
 	};
 
@@ -248,14 +152,6 @@ namespace gynjo::ast {
 	struct sub {
 		ptr minuend;
 		ptr subtrahend;
-
-		sub(ptr minuend, ptr subtrahend);
-
-		sub(sub const& that);
-		sub(sub&&) noexcept = default;
-
-		sub& operator=(sub const& that);
-		sub& operator=(sub&&) noexcept = default;
 
 		bool operator==(sub const& that) const;
 	};
@@ -323,22 +219,14 @@ namespace gynjo::ast {
 		ptr params;
 		ptr body;
 
-		lambda(ptr params, ptr body);
-
-		lambda(lambda const& that);
-		lambda(lambda&&) noexcept = default;
-
-		lambda& operator=(lambda const& that);
-		lambda& operator=(lambda&&) noexcept = default;
-
-		//! Just structural equality because of the halting problem.
-		bool operator==(lambda const& that) const noexcept = default;
+		//! Only checks structural equality for the bodies (not functional equality) because of the halting problem.
+		bool operator==(lambda const& that) const noexcept;
 	};
 
 	//! Convenience function for creating an AST node pointer from @p node.
 	template <typename T>
 	auto make_node(T&& node) {
-		return std::make_unique<ast::node>(std::forward<T>(node));
+		return std::make_shared<ast::node>(std::forward<T>(node));
 	}
 
 	//! Converts the AST node @p node to a user-readable string.

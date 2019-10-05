@@ -30,7 +30,7 @@ auto main(int argc, char* argv[]) -> int {
 
 	// Load core libraries.
 	environment env;
-	auto core_libs = {"constants"};
+	auto core_libs = {"constants", "core"};
 	for (auto const& lib : core_libs) {
 		fmt::print("Importing {}...\n", lib);
 		print(eval(env, fmt::format("import {}", lib)));

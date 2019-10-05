@@ -4,183 +4,52 @@
 #include "ast.hpp"
 
 namespace gynjo::ast {
-	assign::assign(tok::sym symbol, ptr rhs) : symbol{symbol}, rhs{std::move(rhs)} {}
-
-	assign::assign(assign const& that) : symbol{that.symbol}, rhs{make_node(*that.rhs)} {}
-
-	assign& assign::operator=(assign const& that) {
-		symbol = that.symbol;
-		rhs = make_node(*that.rhs);
-		return *this;
-	}
-
 	bool assign::operator==(assign const& that) const {
 		return symbol == that.symbol && *rhs == *that.rhs;
-	}
-
-	cond::cond(ptr test, ptr if_true, ptr if_false)
-		: test{std::move(test)}, if_true{std::move(if_true)}, if_false{std::move(if_false)} {}
-
-	cond::cond(cond const& that)
-		: test{make_node(*that.test)}, if_true{make_node(*that.if_true)}, if_false{make_node(*that.if_false)} {}
-
-	cond& cond::operator=(cond const& that) {
-		test = make_node(*that.test);
-		if_true = make_node(*that.if_true);
-		if_false = make_node(*that.if_false);
-		return *this;
 	}
 
 	bool cond::operator==(cond const& that) const {
 		return *test == *that.test && *if_true == *that.if_true && *if_false == *that.if_false;
 	}
 
-	and_::and_(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
-
-	and_::and_(and_ const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
-
-	and_& and_::operator=(and_ const& that) {
-		left = make_node(*that.left);
-		right = make_node(*that.right);
-		return *this;
-	}
-
 	bool and_::operator==(and_ const& that) const {
 		return *left == *that.left && *right == *that.right;
-	}
-
-	or_::or_(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
-
-	or_::or_(or_ const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
-
-	or_& or_::operator=(or_ const& that) {
-		left = make_node(*that.left);
-		right = make_node(*that.right);
-		return *this;
 	}
 
 	bool or_::operator==(or_ const& that) const {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	not_::not_(ptr expr) : expr{std::move(expr)} {}
-
-	not_::not_(not_ const& that) : expr{make_node(*that.expr)} {}
-
-	not_& not_::operator=(not_ const& that) {
-		expr = make_node(*that.expr);
-		return *this;
-	}
-
 	bool not_::operator==(not_ const& that) const {
 		return *expr == *that.expr;
-	}
-
-	eq::eq(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
-
-	eq::eq(eq const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
-
-	eq& eq::operator=(eq const& that) {
-		left = make_node(*that.left);
-		right = make_node(*that.right);
-		return *this;
 	}
 
 	bool eq::operator==(eq const& that) const {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	neq::neq(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
-
-	neq::neq(neq const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
-
-	neq& neq::operator=(neq const& that) {
-		left = make_node(*that.left);
-		right = make_node(*that.right);
-		return *this;
-	}
-
 	bool neq::operator==(neq const& that) const {
 		return *left == *that.left && *right == *that.right;
-	}
-
-	lt::lt(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
-
-	lt::lt(lt const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
-
-	lt& lt::operator=(lt const& that) {
-		left = make_node(*that.left);
-		right = make_node(*that.right);
-		return *this;
 	}
 
 	bool lt::operator==(lt const& that) const {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	leq::leq(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
-
-	leq::leq(leq const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
-
-	leq& leq::operator=(leq const& that) {
-		left = make_node(*that.left);
-		right = make_node(*that.right);
-		return *this;
-	}
-
 	bool leq::operator==(leq const& that) const {
 		return *left == *that.left && *right == *that.right;
-	}
-
-	gt::gt(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
-
-	gt::gt(gt const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
-
-	gt& gt::operator=(gt const& that) {
-		left = make_node(*that.left);
-		right = make_node(*that.right);
-		return *this;
 	}
 
 	bool gt::operator==(gt const& that) const {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	geq::geq(ptr left, ptr right) : left{std::move(left)}, right{std::move(right)} {}
-
-	geq::geq(geq const& that) : left{make_node(*that.left)}, right{make_node(*that.right)} {}
-
-	geq& geq::operator=(geq const& that) {
-		left = make_node(*that.left);
-		right = make_node(*that.right);
-		return *this;
-	}
-
 	bool geq::operator==(geq const& that) const {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	add::add(ptr addend1, ptr addend2) : addend1{std::move(addend1)}, addend2{std::move(addend2)} {}
-
-	add::add(add const& that) : addend1{make_node(*that.addend1)}, addend2{make_node(*that.addend2)} {}
-
-	add& add::operator=(add const& that) {
-		addend1 = make_node(*that.addend1);
-		return *this;
-	}
-
 	bool add::operator==(add const& that) const {
 		return *addend1 == *that.addend1 && *addend2 == *that.addend2;
-	}
-
-	sub::sub(ptr minuend, ptr subtrahend) : minuend{std::move(minuend)}, subtrahend{std::move(subtrahend)} {}
-
-	sub::sub(sub const& that) : minuend{make_node(*that.minuend)}, subtrahend{make_node(*that.subtrahend)} {}
-
-	sub& sub::operator=(sub const& that) {
-		minuend = make_node(*that.minuend);
-		subtrahend = make_node(*that.subtrahend);
-		return *this;
 	}
 
 	bool sub::operator==(sub const& that) const {
@@ -220,14 +89,8 @@ namespace gynjo::ast {
 		return *elems == *that.elems;
 	}
 
-	lambda::lambda(ptr params, ptr body) : params{std::move(params)}, body{std::move(body)} {}
-
-	lambda::lambda(lambda const& that) : params{make_node(*that.params)}, body{make_node(*that.body)} {}
-
-	lambda& lambda::operator=(lambda const& that) {
-		params = make_node(*that.params);
-		body = make_node(*that.body);
-		return *this;
+	bool lambda::operator==(lambda const& that) const noexcept {
+		return *params == *that.params && *body == *that.body;
 	}
 
 	auto to_string(node const& node) -> std::string {

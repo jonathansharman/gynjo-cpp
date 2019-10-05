@@ -21,7 +21,7 @@ namespace gynjo {
 	namespace {
 		template <typename F>
 		auto eval_unary(environment& env, ast::node const& expr, F&& f) -> eval_result {
-			return eval(env, expr).and_then([&](val::value const& val) { return std::forward<F>(f)(val); });
+			return eval(env, expr).and_then([&](val::value const val) { return std::forward<F>(f)(val); });
 		}
 
 		template <typename F>
@@ -121,13 +121,13 @@ namespace gynjo {
 				return val::make_tup();
 			},
 			[&](ast::assign const& assign) {
-				return eval(env, *assign.rhs).and_then([&](val::value expr_value) -> eval_result {
-					env.vars[assign.symbol.name] = expr_value;
+				return eval(env, *assign.rhs).and_then([&](val::value const& expr_value) -> eval_result {
+					env.vars.emplace(assign.symbol.name, expr_value);
 					return expr_value;
 				});
 			},
 			[&](ast::cond const& cond) {
-				return eval(env, *cond.test).and_then([&](val::value test_value) -> eval_result {
+				return eval(env, *cond.test).and_then([&](val::value const& test_value) -> eval_result {
 					return match(
 						test_value,
 						[&](tok::boolean test) -> eval_result {
@@ -486,7 +486,7 @@ namespace gynjo {
 			parse_result const parse_result = parse(lex_result.value());
 			if (parse_result.has_value()) {
 				auto eval_result = eval(env, parse_result.value());
-				if (eval_result.has_value()) { env.vars["ans"] = eval_result.value(); }
+				// if (eval_result.has_value()) { env.vars["ans"] = eval_result.value(); }
 				return eval_result;
 			} else {
 				return tl::unexpected{"Parse error: " + parse_result.error()};

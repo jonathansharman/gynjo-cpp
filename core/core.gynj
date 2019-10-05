@@ -1,0 +1,23 @@
+// Combinatorics
+
+FACTORIAL_HELPER = (f, n) -> if n < 2 then 1 else n f(f, n-1)
+fact = n -> FACTORIAL_HELPER(FACTORIAL_HELPER, n)
+
+PNK_HELPER = (f, n, k) -> if k == 0 then 1 else n f(f, n-1, k-1)
+nPk = (n, k) -> PNK_HELPER(PNK_HELPER, n, k)
+
+nCk = (n, k) -> nPk(n, k) / fact(k)
+
+ftoc = f -> 5(f - 32)/9
+ctof = c -> 9c/5 + 32
+
+// List operations
+
+head = (head, tail) -> head
+tail = (head, tail) -> tail
+
+NTH_HELPER = (f, list, n) -> if n == 0 then head(list) else f(tail(list))
+nth = (list, n) -> NTH_HELPER(NTH_HELPER, list, n)
+
+LEN_HELPER = (f, list) -> if list == () then 0 else 1 + f(f, list)
+len = list -> LEN_HELPER(LEN_HELPER, list)
