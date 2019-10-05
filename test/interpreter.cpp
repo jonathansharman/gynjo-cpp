@@ -12,14 +12,14 @@ TEST_SUITE("interpreter") {
 	using namespace gynjo;
 
 	TEST_CASE("empty statement") {
-		environment env;
+		auto env = environment::make();
 		val::value const expected = val::make_tup();
 		auto const actual = eval(env, "");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("logical operators") {
-		environment env;
+		auto env = environment::make();
 		val::value const t = tok::boolean{true};
 		val::value const f = tok::boolean{false};
 		SUBCASE("and") {
@@ -50,7 +50,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("comparisons") {
-		environment env;
+		auto env = environment::make();
 		val::value const t = tok::boolean{true};
 		val::value const f = tok::boolean{false};
 		SUBCASE("==") {
@@ -112,7 +112,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("conditional expressions") {
-		environment env;
+		auto env = environment::make();
 		SUBCASE("true is lazy") {
 			val::value const expected = 1;
 			auto const actual = eval(env, "if false then 1/0 else 1");
@@ -131,28 +131,28 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("subtraction and negation") {
-		environment env;
+		auto env = environment::make();
 		val::value const expected = val::num{-1.25};
 		auto const actual = eval(env, "-1+-2^-2");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("simple compound with parentheses") {
-		environment env;
+		auto env = environment::make();
 		val::value const expected = val::num{5.0};
 		auto const actual = eval(env, "-5 *(1 +  -2)");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("basic assignment") {
-		environment env;
+		auto env = environment::make();
 		val::value const expected = val::num{42};
 		auto const actual = eval(env, "x = 42");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("tuple evaluation") {
-		environment env;
+		auto env = environment::make();
 		SUBCASE("nested tuple of numbers") {
 			val::value const expected = val::make_tup(val::num{1}, val::make_tup(val::num{2}, val::num{3}));
 			auto const actual = eval(env, "(1, (2, 3))");
@@ -166,7 +166,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("simple function application") {
-		environment env;
+		auto env = environment::make();
 		eval(env, "f = () -> 42");
 		val::value const expected = val::num{42};
 		auto const actual = eval(env, "f()");
@@ -174,7 +174,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("order of operations") {
-		environment env;
+		auto env = environment::make();
 		eval(env, "inc = a -> a + 1");
 		SUBCASE("parenthesized function call before exponentiation") {
 			val::value const expected = val::num{36};
@@ -189,7 +189,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("higher-order functions") {
-		environment env;
+		auto env = environment::make();
 		val::value const expected = val::num{42};
 		eval(env, "apply = (f, a) -> f(a)");
 		auto const actual = eval(env, "apply(a -> a, 42)");
@@ -197,7 +197,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("curried function") {
-		environment env;
+		auto env = environment::make();
 		val::value const expected = val::num{3};
 		eval(env, "sum = a -> b -> a + b");
 		auto const actual = eval(env, "sum 1 2");
@@ -205,7 +205,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("environment doesn't persist between function chains") {
-		environment env;
+		auto env = environment::make();
 		eval(env, "sum = a -> b -> a + b");
 		eval(env, "get_a = () -> a");
 		auto const result = eval(env, "sum (1) (2) get_a ()");
@@ -214,7 +214,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("chained application with and without parentheses") {
-		environment env;
+		auto env = environment::make();
 		val::value const expected = val::num{3};
 		eval(env, "sum = a -> b -> a + b");
 		eval(env, "inc = a -> a + 1");
@@ -223,7 +223,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("chained application does not pollute applications higher in the call chain") {
-		environment env;
+		auto env = environment::make();
 		val::value const expected = val::num{8};
 		eval(env, "sum = a -> b -> a + b");
 		eval(env, "inc = b -> b + 1");
@@ -232,7 +232,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("importing standard constants") {
-		environment env;
+		auto env = environment::make();
 		val::value const expected = val::num{
 			"3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679"};
 		eval(env, "import constants");

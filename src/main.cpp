@@ -29,7 +29,7 @@ auto main(int argc, char* argv[]) -> int {
 	using namespace gynjo;
 
 	// Load core libraries.
-	environment env;
+	auto env = environment::make();
 	auto core_libs = {"constants", "core"};
 	for (auto const& lib : core_libs) {
 		fmt::print("Importing {}...\n", lib);

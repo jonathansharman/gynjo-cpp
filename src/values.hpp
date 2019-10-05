@@ -24,17 +24,9 @@ namespace gynjo {
 		//! A function along with the environment in which it was called.
 		struct closure {
 			ast::lambda lambda;
-			std::unique_ptr<environment> env;
-
-			closure(ast::lambda lambda, std::unique_ptr<environment> env);
-
-			closure(closure const& that);
-			closure(closure&&) noexcept = default;
+			std::shared_ptr<environment> env;
 
 			~closure();
-
-			closure& operator=(closure const& that);
-			closure& operator=(closure&&) noexcept = default;
 
 			//! Because of the halting problem, this just does shallow equality checking on the body.
 			bool operator==(closure const& other) const noexcept = default;
@@ -42,23 +34,17 @@ namespace gynjo {
 
 		//! Tuple of Gynjo values.
 		struct tup {
-			std::unique_ptr<std::vector<value>> elems;
+			std::shared_ptr<std::vector<value>> elems;
 
 			tup();
-			explicit tup(std::unique_ptr<std::vector<value>> elems);
-
-			tup(tup const& that);
-			tup(tup&&) noexcept = default;
-
-			tup& operator=(tup const& that);
-			tup& operator=(tup&&) noexcept = default;
+			explicit tup(std::shared_ptr<std::vector<value>> elems);
 
 			bool operator==(tup const& that) const;
 		};
 
 		template <typename... Args>
 		auto make_tup(Args&&... args) {
-			auto elems = std::make_unique<std::vector<value>>();
+			auto elems = std::make_shared<std::vector<value>>();
 			(elems->push_back(std::move(args)), ...);
 			return tup{std::move(elems)};
 		}

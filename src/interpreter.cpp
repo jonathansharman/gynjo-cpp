@@ -14,18 +14,19 @@
 
 #include <cmath>
 #include <fstream>
+#include <memory>
 
 using namespace std::string_literals;
 
 namespace gynjo {
 	namespace {
 		template <typename F>
-		auto eval_unary(environment& env, ast::node const& expr, F&& f) -> eval_result {
+		auto eval_unary(environment::ptr const& env, ast::node const& expr, F&& f) -> eval_result {
 			return eval(env, expr).and_then([&](val::value const val) { return std::forward<F>(f)(val); });
 		}
 
 		template <typename F>
-		auto eval_binary(environment& env, ast::node const& a, ast::node const& b, F&& f) -> eval_result {
+		auto eval_binary(environment::ptr const& env, ast::node const& a, ast::node const& b, F&& f) -> eval_result {
 			return eval(env, a) //
 				.and_then([&](val::value const& a) { //
 					return eval(env, b) //
@@ -85,14 +86,14 @@ namespace gynjo {
 				arg.elems->size() == 1 ? "" : "s")};
 		}
 		// Assign arguments to parameters within a copy of the closure's environment.
-		auto app_env = *f.env;
+		auto local_env = std::make_shared<environment>(f.env);
 		for (std::size_t i = 0; i < arg.elems->size(); ++i) {
 			// The parser guarantees that each parameter is a symbol.
 			auto param = std::get<tok::sym>((*params.elems)[i]).name;
-			app_env.vars[param] = (*arg.elems)[i];
+			local_env->local_vars[param] = (*arg.elems)[i];
 		}
 		// Evaluate function body within the application environment.
-		return eval(app_env, *f.lambda.body);
+		return eval(local_env, *f.lambda.body);
 	}
 
 	auto negate(val::value const& value) -> eval_result {
@@ -102,7 +103,7 @@ namespace gynjo {
 			[](auto const& value) -> eval_result { return tl::unexpected{"cannot negate " + val::to_string(value)}; });
 	}
 
-	auto eval(environment& env, ast::node const& node) -> eval_result {
+	auto eval(environment::ptr const& env, ast::node const& node) -> eval_result {
 		return match(
 			node,
 			[](ast::nop) -> eval_result { return val::make_tup(); },
@@ -122,7 +123,7 @@ namespace gynjo {
 			},
 			[&](ast::assign const& assign) {
 				return eval(env, *assign.rhs).and_then([&](val::value const& expr_value) -> eval_result {
-					env.vars.emplace(assign.symbol.name, expr_value);
+					env->local_vars.emplace(assign.symbol.name, expr_value);
 					return expr_value;
 				});
 			},
@@ -454,8 +455,8 @@ namespace gynjo {
 				return items.front();
 			},
 			[&](ast::lambda const& f) -> eval_result {
-				// When a lambda is evaluated, it forms a closure, which includes a copy of the current environment.
-				return val::closure{f, std::make_unique<environment>(env)};
+				// When a lambda is evaluated, it forms a closure, which points to the current environment.
+				return val::closure{f, std::make_shared<environment>(env)};
 			},
 			[&](ast::tup const& tup_ast) -> eval_result {
 				val::tup tup_val;
@@ -472,21 +473,21 @@ namespace gynjo {
 			[](tok::boolean const& b) -> eval_result { return b; },
 			[](tok::num const& num) -> eval_result { return val::num{num.rep}; },
 			[&](tok::sym const& sym) -> eval_result {
-				if (auto it = env.vars.find(sym.name); it != env.vars.end()) {
-					return it->second;
+				if (auto lookup = env->lookup(sym.name)) {
+					return *lookup;
 				} else {
 					return tl::unexpected{fmt::format("'{}' is not defined", sym.name)};
 				}
 			});
 	}
 
-	auto eval(environment& env, std::string const& input) -> eval_result {
+	auto eval(environment::ptr const& env, std::string const& input) -> eval_result {
 		lex_result const lex_result = lex(input);
 		if (lex_result.has_value()) {
 			parse_result const parse_result = parse(lex_result.value());
 			if (parse_result.has_value()) {
 				auto eval_result = eval(env, parse_result.value());
-				// if (eval_result.has_value()) { env.vars["ans"] = eval_result.value(); }
+				if (eval_result.has_value()) { env->local_vars.emplace("ans", eval_result.value()); }
 				return eval_result;
 			} else {
 				return tl::unexpected{"Parse error: " + parse_result.error()};
