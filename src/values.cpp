@@ -8,11 +8,11 @@
 namespace gynjo::val {
 	closure::~closure() = default;
 
-	tup::tup() : elems{std::make_shared<std::vector<value>>()} {}
+	list::list() : elems{std::make_shared<std::vector<value>>()} {}
 
-	tup::tup(std::shared_ptr<std::vector<value>> elems) : elems{std::move(elems)} {}
+	list::list(std::shared_ptr<std::vector<value>> elems) : elems{std::move(elems)} {}
 
-	bool tup::operator==(tup const& that) const {
+	bool list::operator==(list const& that) const {
 		return *elems == *that.elems;
 	}
 
@@ -22,11 +22,11 @@ namespace gynjo::val {
 			val,
 			[](tok::boolean const& b) { return tok::to_string(b); },
 			[](num const& num) { return num.str(); },
-			[](tup const& tup) {
+			[](list const& list) {
 				std::string result = "(";
-				if (!tup.elems->empty()) {
-					result += to_string(tup.elems->front());
-					for (auto it = tup.elems->begin() + 1; it != tup.elems->end(); ++it) {
+				if (!list.elems->empty()) {
+					result += to_string(list.elems->front());
+					for (auto it = list.elems->begin() + 1; it != list.elems->end(); ++it) {
 						result += ", " + to_string(*it);
 					}
 				}

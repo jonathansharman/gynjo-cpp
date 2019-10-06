@@ -38,52 +38,19 @@ namespace gynjo {
 
 		template <typename F>
 		auto bin_num_op(val::value const& left, val::value const& right, std::string_view op_name, F&& op) -> eval_result {
-			auto error = [&]() -> eval_result {
-				return tl::unexpected{
-					fmt::format("cannot perform {} with {} and {}", op_name, val::to_string(left), val::to_string(right))};
-			};
 			return match2(
 				left,
 				right,
 				[&](val::num const& left, val::num const& right) -> eval_result {
-					// Apply operation.
 					return std::forward<F>(op)(left, right);
 				},
-				[&](val::tup const& left, auto const& right) -> eval_result {
-					// Search into left for a number.
-					return left.elems->size() == 1 ? bin_num_op(left.elems->front(), right, op_name, op) : error();
-				},
-				[&](val::num const& left, val::tup const& right) -> eval_result {
-					// Search into right for a number.
-					return right.elems->size() == 1 ? bin_num_op(left, right.elems->front(), op_name, op) : error();
-				},
 				[&](auto const&, auto const&) -> eval_result {
-					// Couldn't find a number for each argument.
-					return error();
+					return tl::unexpected{fmt::format(
+						"cannot perform {} with {} and {}", op_name, val::to_string(left), val::to_string(right))};
 				});
 		}
 
-		auto product(val::value const& factor1, val::value const& factor2) -> eval_result {
-			return bin_num_op(
-				factor1, factor2, "multiplication", [](val::num const& factor1, val::num const& factor2) -> eval_result {
-					return factor1 * factor2;
-				});
-		}
-
-		auto quotient(val::value const& dividend, val::value const& divisor) -> eval_result {
-			return bin_num_op(dividend, divisor, "division", [](val::num const& dividend, val::num const& divisor) -> eval_result {
-				if (divisor == 0) { return tl::unexpected{"division by zero"s}; }
-				return dividend / divisor;
-			});
-		}
-
-		auto power(val::value const& base, val::value const& exponent) -> eval_result {
-			return bin_num_op(base, exponent, "exponentiation", [](val::num const& base, val::num const& exponent) -> eval_result {
-				return boost::multiprecision::pow(base, exponent);
-			});
-		}
-
-		auto application(val::closure const& c, val::tup const& arg) -> eval_result {
+		auto application(val::closure const& c, val::list const& arg) -> eval_result {
 			// The parser guarantees the parameter list is a tuple.
 			auto const& params = std::get<ast::tup>(*c.f.params);
 			// Ensure correct number of arguments.
@@ -136,7 +103,7 @@ namespace gynjo {
 	auto eval(environment::ptr const& env, ast::node const& node) -> eval_result {
 		return match(
 			node,
-			[](ast::nop) -> eval_result { return val::make_tup(); },
+			[](ast::nop) -> eval_result { return val::make_list(); },
 			[&](ast::imp const& imp) -> eval_result {
 				std::ifstream fin{imp.filename + ".gynj"};
 				if (!fin.is_open()) {
@@ -149,7 +116,7 @@ namespace gynjo {
 						return tl::unexpected{fmt::format("error in \"{}\": {}", imp.filename, line_result.error())};
 					}
 				}
-				return val::make_tup();
+				return val::make_list();
 			},
 			[&](ast::assign const& assign) {
 				return eval(env, *assign.rhs).and_then([&](val::value const& expr_value) -> eval_result {
@@ -367,11 +334,11 @@ namespace gynjo {
 							}
 							auto const& arg = items[i + 1];
 							// Apply function.
-							auto result = std::holds_alternative<val::tup>(arg)
-								// Argument is already a tuple.
-								? application(std::get<val::closure>(f), std::get<val::tup>(arg))
-								// Wrap argument in a tuple.
-								: application(std::get<val::closure>(f), val::make_tup(arg));
+							auto result = std::holds_alternative<val::list>(arg)
+								// Argument is already a list.
+								? application(std::get<val::closure>(f), std::get<val::list>(arg))
+								// Wrap argument in a list.
+								: application(std::get<val::closure>(f), val::make_list(arg));
 							if (result.has_value()) {
 								items[i] = std::move(result.value());
 								// Erase consumed item.
@@ -403,13 +370,16 @@ namespace gynjo {
 							}
 						}
 						auto const& exp = items[i + 1];
-						auto result = power(base, exp);
-						if (result.has_value()) {
-							items[i] = std::move(result.value());
+						auto power = bin_num_op(
+							base, exp, "exponentiation", [](val::num const& base, val::num const& exponent) -> eval_result {
+								return boost::multiprecision::pow(base, exponent);
+							});
+						if (power.has_value()) {
+							items[i] = std::move(power.value());
 							items.erase(items.begin() + i + 1);
 							connectors.erase(connectors.begin() + i);
 						} else {
-							return result;
+							return power;
 						}
 					} else {
 						++i;
@@ -438,13 +408,16 @@ namespace gynjo {
 								}
 							}
 							auto const& factor2 = items[i + 1];
-							auto result = product(factor1, factor2);
-							if (result.has_value()) {
-								items[i] = std::move(result.value());
+							auto product = bin_num_op(
+								factor1, factor2, "multiplication", [](val::num const& factor1, val::num const& factor2) -> eval_result {
+									return factor1 * factor2;
+								});
+							if (product.has_value()) {
+								items[i] = std::move(product.value());
 								items.erase(items.begin() + i + 1);
 								connectors.erase(connectors.begin() + i);
 							} else {
-								return result;
+								return product;
 							}
 							break;
 						}
@@ -461,13 +434,17 @@ namespace gynjo {
 								}
 							}
 							auto const& divisor = items[i + 1];
-							auto result = quotient(dividend, divisor);
-							if (result.has_value()) {
-								items[i] = std::move(result.value());
+							auto quotient = bin_num_op(
+								dividend, divisor, "division", [](val::num const& dividend, val::num const& divisor) -> eval_result {
+									if (divisor == 0) { return tl::unexpected{"division by zero"s}; }
+									return dividend / divisor;
+								});
+							if (quotient.has_value()) {
+								items[i] = std::move(quotient.value());
 								items.erase(items.begin() + i + 1);
 								connectors.erase(connectors.begin() + i);
 							} else {
-								return result;
+								return quotient;
 							}
 						}
 					}
@@ -487,17 +464,17 @@ namespace gynjo {
 			[&](ast::lambda const& f) -> eval_result {
 				return val::closure{f, std::make_shared<environment>(env)};
 			},
-			[&](ast::tup const& tup_ast) -> eval_result {
-				val::tup tup_val;
-				for (auto const& elem_ast : *tup_ast.elems) {
+			[&](ast::tup const& tup) -> eval_result {
+				val::list list;
+				for (auto const& elem_ast : *tup.elems) {
 					auto elem_result = eval(env, elem_ast);
 					if (elem_result.has_value()) {
-						tup_val.elems->push_back(std::move(elem_result.value()));
+						list.elems->push_back(std::move(elem_result.value()));
 					} else {
 						return elem_result;
 					}
 				}
-				return tup_val;
+				return list;
 			},
 			[](tok::boolean const& b) -> eval_result { return b; },
 			[](tok::num const& num) -> eval_result { return val::num{num.rep}; },
@@ -523,7 +500,7 @@ namespace gynjo {
 
 	auto print(eval_result result) -> void {
 		if (result.has_value()) {
-			if (result.value() != val::value{val::make_tup()}) {
+			if (result.value() != val::value{val::make_list()}) {
 				fmt::print("{}\n", gynjo::val::to_string(result.value()));
 			}
 		} else {

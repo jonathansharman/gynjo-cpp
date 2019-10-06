@@ -13,7 +13,7 @@ TEST_SUITE("interpreter") {
 
 	TEST_CASE("empty statement") {
 		auto env = environment::make();
-		val::value const expected = val::make_tup();
+		val::value const expected = val::make_list();
 		auto const actual = eval(env, "");
 		CHECK(expected == actual.value());
 	}
@@ -29,10 +29,10 @@ TEST_SUITE("interpreter") {
 			CHECK(t == eval(env, "true and true").value());
 		}
 		SUBCASE("or") {
-			CHECK(f == eval(env, "false and false").value());
-			CHECK(f == eval(env, "false and true").value());
-			CHECK(f == eval(env, "true and false").value());
-			CHECK(t == eval(env, "true and true").value());
+			CHECK(f == eval(env, "false or false").value());
+			CHECK(t == eval(env, "false or true").value());
+			CHECK(t == eval(env, "true or false").value());
+			CHECK(t == eval(env, "true or true").value());
 		}
 		SUBCASE("not") {
 			CHECK(f == eval(env, "not true").value());
@@ -46,6 +46,11 @@ TEST_SUITE("interpreter") {
 		SUBCASE("and precedes or") {
 			CHECK(t == eval(env, "true or true and false").value());
 			CHECK(t == eval(env, "false and true or true").value());
+		}
+		SUBCASE("parenthesized") {
+			CHECK(f == eval(env, "(false) and true").value());
+			CHECK(t == eval(env, "false or ((true))").value());
+			CHECK(t == eval(env, "not (false)").value());
 		}
 	}
 
@@ -109,6 +114,14 @@ TEST_SUITE("interpreter") {
 			CHECK(t == eval(env, "1 < 2 == 2 < 3").value());
 			CHECK(t == eval(env, "1 > 2 != 2 < 3").value());
 		}
+		SUBCASE("parenthesized") {
+			CHECK(t == eval(env, "(1) == 1").value());
+			CHECK(f == eval(env, "1 != (1)").value());
+			CHECK(t == eval(env, "((1)) < 2").value());
+			CHECK(t == eval(env, "1 <= ((1))").value());
+			CHECK(f == eval(env, "(1) > (1)").value());
+			CHECK(f == eval(env, "((1)) >= (2)").value());
+		}
 	}
 
 	TEST_CASE("conditional expressions") {
@@ -124,7 +137,7 @@ TEST_SUITE("interpreter") {
 			CHECK(expected == actual.value());
 		}
 		SUBCASE("no else expression") {
-			val::value const expected = val::make_tup();
+			val::value const expected = val::make_list();
 			auto const actual = eval(env, "if false then 1");
 			CHECK(expected == actual.value());
 		}
@@ -154,12 +167,12 @@ TEST_SUITE("interpreter") {
 	TEST_CASE("tuple evaluation") {
 		auto env = environment::make();
 		SUBCASE("nested tuple of numbers") {
-			val::value const expected = val::make_tup(val::num{1}, val::make_tup(val::num{2}, val::num{3}));
+			val::value const expected = val::make_list(val::num{1}, val::make_list(val::num{2}, val::num{3}));
 			auto const actual = eval(env, "(1, (2, 3))");
 			CHECK(expected == actual.value());
 		}
 		SUBCASE("nested tuple of numbers and booleans") {
-			val::value const expected = val::make_tup(tok::boolean{true}, val::make_tup(val::num{2}, tok::boolean{false}));
+			val::value const expected = val::make_list(tok::boolean{true}, val::make_list(val::num{2}, tok::boolean{false}));
 			auto const actual = eval(env, "(1 < 2, (2, false))");
 			CHECK(expected == actual.value());
 		}
