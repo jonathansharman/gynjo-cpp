@@ -44,6 +44,13 @@ namespace gynjo {
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)...", flags}, [](sv sv) { return tok::num{sv.data()}; }},
 			{std::regex{R"...(true\b)...", flags}, [](sv) { return tok::boolean{true}; }},
 			{std::regex{R"...(false\b)...", flags}, [](sv) { return tok::boolean{false}; }},
+			// Intrinsic functions
+			{std::regex{R"...(len\b)...", flags}, [](sv) { return intrinsic::len; }},
+			{std::regex{R"...(at\b)...", flags}, [](sv) { return intrinsic::at; }},
+			{std::regex{R"...(push\b)...", flags}, [](sv) { return intrinsic::push; }},
+			{std::regex{R"...(pop\b)...", flags}, [](sv) { return intrinsic::pop; }},
+			{std::regex{R"...(insert\b)...", flags}, [](sv) { return intrinsic::insert; }},
+			{std::regex{R"...(erase\b)...", flags}, [](sv) { return intrinsic::erase; }},
 			// Keywords
 			{std::regex{R"...(import\b)...", flags}, [](sv) { return tok::imp{}; }},
 			{std::regex{R"...(if\b)...", flags}, [](sv) { return tok::if_{}; }},

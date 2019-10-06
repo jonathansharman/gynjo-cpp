@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "intrinsics.hpp"
 #include "visitation.hpp"
 
 #include <compare>
@@ -119,7 +120,7 @@ namespace gynjo::tok {
 
 	//! Union type of all valid tokens.
 	using token =
-		std::variant<imp, assign, if_, then, else_, and_, or_, not_, eq, neq, lt, leq, gt, geq, plus, minus, mul, div, exp, lft, rht, com, arrow, boolean, num, sym>;
+		std::variant<imp, assign, if_, then, else_, and_, or_, not_, eq, neq, lt, leq, gt, geq, plus, minus, mul, div, exp, lft, rht, com, arrow, boolean, num, sym, intrinsic>;
 
 	//! Converts the token @p tok to a user-readable string.
 	inline auto to_string(token tok) -> std::string {
@@ -151,6 +152,7 @@ namespace gynjo::tok {
 			[](arrow const&) { return "->"s; },
 			[](boolean const& b) { return b.value ? "true"s : "false"s; },
 			[](num const& n) { return n.rep; },
-			[](sym const& s) { return s.name; });
+			[](sym const& s) { return s.name; },
+			[](intrinsic const& f) { return name(f); });
 	}
 }

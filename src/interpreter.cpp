@@ -75,25 +75,46 @@ namespace gynjo {
 			});
 	}
 
-	auto application(val::closure const& f, val::tup const& arg) -> eval_result {
+	auto application(val::closure const& c, val::tup const& arg) -> eval_result {
 		// The parser guarantees the parameter list is a tuple.
-		auto const& params = std::get<ast::tup>(*f.lambda.params);
+		auto const& params = std::get<ast::tup>(*c.f.params);
 		// Ensure correct number of arguments.
 		if (arg.elems->size() != params.elems->size()) {
-			return tl::unexpected{fmt::format("attempted to call {}-ary function with {} argument{}.",
+			return tl::unexpected{fmt::format("function requires {} argument{}, received {}",
 				params.elems->size(),
-				arg.elems->size(),
-				arg.elems->size() == 1 ? "" : "s")};
+				params.elems->size() == 1 ? "" : "s",
+				arg.elems->size())};
 		}
 		// Assign arguments to parameters within a copy of the closure's environment.
-		auto local_env = std::make_shared<environment>(f.env);
+		auto local_env = std::make_shared<environment>(c.env);
 		for (std::size_t i = 0; i < arg.elems->size(); ++i) {
 			// The parser guarantees that each parameter is a symbol.
 			auto param = std::get<tok::sym>((*params.elems)[i]).name;
 			local_env->local_vars[param] = (*arg.elems)[i];
 		}
 		// Evaluate function body within the application environment.
-		return eval(local_env, *f.lambda.body);
+		return match(
+			c.f.body,
+			[&](ast::ptr const& body) -> eval_result { return eval(local_env, *body); },
+			[&](intrinsic body) -> eval_result {
+				switch (body) {
+					case intrinsic::len:
+						return tl::unexpected{"not implemented"s};
+					case intrinsic::at:
+						return tl::unexpected{"not implemented"s};
+					case intrinsic::push:
+						return tl::unexpected{"not implemented"s};
+					case intrinsic::pop:
+						return tl::unexpected{"not implemented"s};
+					case intrinsic::insert:
+						return tl::unexpected{"not implemented"s};
+					case intrinsic::erase:
+						return tl::unexpected{"not implemented"s};
+					default:
+						// unreachable
+						return tl::unexpected{"call to unknown intrinsic function"s};
+				}
+			});
 	}
 
 	auto negate(val::value const& value) -> eval_result {
@@ -455,7 +476,6 @@ namespace gynjo {
 				return items.front();
 			},
 			[&](ast::lambda const& f) -> eval_result {
-				// When a lambda is evaluated, it forms a closure, which points to the current environment.
 				return val::closure{f, std::make_shared<environment>(env)};
 			},
 			[&](ast::tup const& tup_ast) -> eval_result {
@@ -482,19 +502,14 @@ namespace gynjo {
 	}
 
 	auto eval(environment::ptr const& env, std::string const& input) -> eval_result {
+		// Lex.
 		lex_result const lex_result = lex(input);
-		if (lex_result.has_value()) {
-			parse_result const parse_result = parse(lex_result.value());
-			if (parse_result.has_value()) {
-				auto eval_result = eval(env, parse_result.value());
-				if (eval_result.has_value()) { env->local_vars.emplace("ans", eval_result.value()); }
-				return eval_result;
-			} else {
-				return tl::unexpected{"Parse error: " + parse_result.error()};
-			}
-		} else {
-			return tl::unexpected{"Lex error: " + lex_result.error()};
-		}
+		if (!lex_result.has_value()) { return tl::unexpected{"Lex error: " + lex_result.error()}; }
+		// Parse.
+		parse_result const parse_result = parse(lex_result.value());
+		if (!parse_result.has_value()) { return tl::unexpected{"Parse error: " + parse_result.error()}; }
+		// Evaluate.
+		return eval(env, parse_result.value());
 	}
 
 	auto print(eval_result result) -> void {

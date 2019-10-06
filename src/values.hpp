@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ast.hpp"
+#include "environment_fwd.hpp"
 #include "tokens.hpp"
 #include "visitation.hpp"
 
@@ -12,8 +13,6 @@
 #include <memory>
 
 namespace gynjo {
-	struct environment;
-
 	namespace val {
 		//! Floating-point number.
 		using num = boost::multiprecision::cpp_dec_float_100;
@@ -21,14 +20,14 @@ namespace gynjo {
 		//! Union type of all Gynjo value types.
 		using value = std::variant<tok::boolean, num, struct tup, struct closure>;
 
-		//! A function along with the environment in which it was called.
+		//! A lambda along with the environment in which it was called.
 		struct closure {
-			ast::lambda lambda;
+			ast::lambda f;
 			std::shared_ptr<environment> env;
 
 			~closure();
 
-			//! Because of the halting problem, this just does shallow equality checking on the body.
+			//! Because of the halting problem, this just does shallow equality checking on lambda bodies.
 			bool operator==(closure const& other) const noexcept = default;
 		};
 

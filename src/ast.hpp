@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "intrinsics.hpp"
 #include "tokens.hpp"
 #include "visitation.hpp"
 
@@ -217,7 +218,8 @@ namespace gynjo::ast {
 	//! Lambda expression.
 	struct lambda {
 		ptr params;
-		ptr body;
+		//! The body of a lambda can be either a user-defined function or an intrinsic function.
+		std::variant<ptr, intrinsic> body;
 
 		//! Only checks structural equality for the bodies (not functional equality) because of the halting problem.
 		bool operator==(lambda const& that) const noexcept;

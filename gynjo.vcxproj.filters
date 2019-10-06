@@ -39,6 +39,12 @@
     <ClCompile Include="src\ast.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\intrinsics.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\environment.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\visitation.hpp">
@@ -63,6 +69,12 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\environment.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\intrinsics.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\environment_fwd.hpp">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

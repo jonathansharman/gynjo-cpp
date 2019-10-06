@@ -79,6 +79,29 @@ namespace gynjo {
 							// Return unmodified tuple.
 							: std::move(tup)};
 				},
+				// Intrinsic function
+				[&](intrinsic f) -> subparse_result {
+					auto params = [&] {
+						switch (f) {
+							case intrinsic::len:
+								return ast::make_tup(tok::sym{"list"});
+							case intrinsic::at:
+								return ast::make_tup(tok::sym{"list, index"});
+							case intrinsic::push:
+								return ast::make_tup(tok::sym{"list, value"});
+							case intrinsic::pop:
+								return ast::make_tup(tok::sym{"list"});
+							case intrinsic::insert:
+								return ast::make_tup(tok::sym{"list, index, value"});
+							case intrinsic::erase:
+								return ast::make_tup(tok::sym{"list, index"});
+							default:
+								// unreachable
+								return ast::make_tup();
+						}
+					}();
+					return std::pair{it, ast::lambda{make_node(std::move(params)), f}};
+				},
 				// Boolean
 				[&](tok::boolean const& b) -> subparse_result {
 					return std::pair{it, b};

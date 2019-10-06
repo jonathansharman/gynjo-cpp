@@ -90,7 +90,7 @@ namespace gynjo::ast {
 	}
 
 	bool lambda::operator==(lambda const& that) const noexcept {
-		return *params == *that.params && *body == *that.body;
+		return *params == *that.params && body == that.body;
 	}
 
 	auto to_string(node const& node) -> std::string {
@@ -143,7 +143,13 @@ namespace gynjo::ast {
 				}
 				return result;
 			},
-			[](lambda const& f) { return fmt::format("({} -> {})", to_string(*f.params), to_string(*f.body)); },
+			[](lambda const& f) {
+				return match(
+					f.body,
+					[&](ptr const& body) { return fmt::format("({} -> {})", to_string(*f.params), to_string(*body)); },
+					[](intrinsic body) { return name(body); });
+			},
+			[](intrinsic const& f) { return name(f); },
 			[](tup const& tup) {
 				std::string result = "(";
 				if (!tup.elems->empty()) {

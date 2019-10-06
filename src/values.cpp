@@ -33,6 +33,6 @@ namespace gynjo::val {
 				result += ")";
 				return result;
 			},
-			[](closure const& f) { return ast::to_string(f.lambda); });
+			[](closure const& c) { return ast::to_string(c.f); });
 	}
 }
