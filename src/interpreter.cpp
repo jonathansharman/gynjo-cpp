@@ -35,93 +35,102 @@ namespace gynjo {
 						});
 				});
 		}
-	}
 
-	auto product(val::value const& dividend, val::value const& divisor) -> eval_result {
-		return match2(
-			dividend,
-			divisor,
-			[&](val::num const& factor1, val::num const& factor2) -> eval_result { return factor1 * factor2; },
-			[](auto const& factor1, auto const& factor2) -> eval_result {
+		template <typename F>
+		auto bin_num_op(val::value const& left, val::value const& right, std::string_view op_name, F&& op) -> eval_result {
+			auto error = [&]() -> eval_result {
 				return tl::unexpected{
-					fmt::format("cannot multiply {} and {}", val::to_string(factor1), val::to_string(factor2))};
-			});
-	}
+					fmt::format("cannot perform {} with {} and {}", op_name, val::to_string(left), val::to_string(right))};
+			};
+			return match2(
+				left,
+				right,
+				[&](val::num const& left, val::num const& right) -> eval_result {
+					// Apply operation.
+					return std::forward<F>(op)(left, right);
+				},
+				[&](val::tup const& left, auto const& right) -> eval_result {
+					// Search into left for a number.
+					return left.elems->size() == 1 ? bin_num_op(left.elems->front(), right, op_name, op) : error();
+				},
+				[&](val::num const& left, val::tup const& right) -> eval_result {
+					// Search into right for a number.
+					return right.elems->size() == 1 ? bin_num_op(left, right.elems->front(), op_name, op) : error();
+				},
+				[&](auto const&, auto const&) -> eval_result {
+					// Couldn't find a number for each argument.
+					return error();
+				});
+		}
 
-	auto quotient(val::value const& dividend, val::value const& divisor) -> eval_result {
-		return match2(
-			dividend,
-			divisor,
-			[&](val::num const& dividend, val::num const& divisor) -> eval_result {
+		auto product(val::value const& factor1, val::value const& factor2) -> eval_result {
+			return bin_num_op(
+				factor1, factor2, "multiplication", [](val::num const& factor1, val::num const& factor2) -> eval_result {
+					return factor1 * factor2;
+				});
+		}
+
+		auto quotient(val::value const& dividend, val::value const& divisor) -> eval_result {
+			return bin_num_op(dividend, divisor, "division", [](val::num const& dividend, val::num const& divisor) -> eval_result {
 				if (divisor == 0) { return tl::unexpected{"division by zero"s}; }
 				return dividend / divisor;
-			},
-			[](auto const& dividend, auto const& divisor) -> eval_result {
-				return tl::unexpected{
-					fmt::format("cannot divide {} and {}", val::to_string(dividend), val::to_string(divisor))};
 			});
-	}
+		}
 
-	auto power(val::value const& base, val::value const& exponent) -> eval_result {
-		return match2(
-			base,
-			exponent,
-			[&](val::num const& base, val::num const& exponent) -> eval_result {
+		auto power(val::value const& base, val::value const& exponent) -> eval_result {
+			return bin_num_op(base, exponent, "exponentiation", [](val::num const& base, val::num const& exponent) -> eval_result {
 				return boost::multiprecision::pow(base, exponent);
-			},
-			[](auto const& base, auto const& exponent) -> eval_result {
-				return tl::unexpected{
-					fmt::format("cannot raise {} to the power of {}", val::to_string(base), val::to_string(exponent))};
 			});
-	}
-
-	auto application(val::closure const& c, val::tup const& arg) -> eval_result {
-		// The parser guarantees the parameter list is a tuple.
-		auto const& params = std::get<ast::tup>(*c.f.params);
-		// Ensure correct number of arguments.
-		if (arg.elems->size() != params.elems->size()) {
-			return tl::unexpected{fmt::format("function requires {} argument{}, received {}",
-				params.elems->size(),
-				params.elems->size() == 1 ? "" : "s",
-				arg.elems->size())};
 		}
-		// Assign arguments to parameters within a copy of the closure's environment.
-		auto local_env = std::make_shared<environment>(c.env);
-		for (std::size_t i = 0; i < arg.elems->size(); ++i) {
-			// The parser guarantees that each parameter is a symbol.
-			auto param = std::get<tok::sym>((*params.elems)[i]).name;
-			local_env->local_vars[param] = (*arg.elems)[i];
-		}
-		// Evaluate function body within the application environment.
-		return match(
-			c.f.body,
-			[&](ast::ptr const& body) -> eval_result { return eval(local_env, *body); },
-			[&](intrinsic body) -> eval_result {
-				switch (body) {
-					case intrinsic::len:
-						return tl::unexpected{"not implemented"s};
-					case intrinsic::at:
-						return tl::unexpected{"not implemented"s};
-					case intrinsic::push:
-						return tl::unexpected{"not implemented"s};
-					case intrinsic::pop:
-						return tl::unexpected{"not implemented"s};
-					case intrinsic::insert:
-						return tl::unexpected{"not implemented"s};
-					case intrinsic::erase:
-						return tl::unexpected{"not implemented"s};
-					default:
-						// unreachable
-						return tl::unexpected{"call to unknown intrinsic function"s};
-				}
-			});
-	}
 
-	auto negate(val::value const& value) -> eval_result {
-		return match(
-			value,
-			[](val::num num) -> eval_result { return -num; },
-			[](auto const& value) -> eval_result { return tl::unexpected{"cannot negate " + val::to_string(value)}; });
+		auto application(val::closure const& c, val::tup const& arg) -> eval_result {
+			// The parser guarantees the parameter list is a tuple.
+			auto const& params = std::get<ast::tup>(*c.f.params);
+			// Ensure correct number of arguments.
+			if (arg.elems->size() != params.elems->size()) {
+				return tl::unexpected{fmt::format("function requires {} argument{}, received {}",
+					params.elems->size(),
+					params.elems->size() == 1 ? "" : "s",
+					arg.elems->size())};
+			}
+			// Assign arguments to parameters within a copy of the closure's environment.
+			auto local_env = std::make_shared<environment>(c.env);
+			for (std::size_t i = 0; i < arg.elems->size(); ++i) {
+				// The parser guarantees that each parameter is a symbol.
+				auto param = std::get<tok::sym>((*params.elems)[i]).name;
+				local_env->local_vars[param] = (*arg.elems)[i];
+			}
+			// Evaluate function body within the application environment.
+			return match(
+				c.f.body,
+				[&](ast::ptr const& body) -> eval_result { return eval(local_env, *body); },
+				[&](intrinsic body) -> eval_result {
+					switch (body) {
+						case intrinsic::len:
+							return tl::unexpected{"not implemented"s};
+						case intrinsic::at:
+							return tl::unexpected{"not implemented"s};
+						case intrinsic::push:
+							return tl::unexpected{"not implemented"s};
+						case intrinsic::pop:
+							return tl::unexpected{"not implemented"s};
+						case intrinsic::insert:
+							return tl::unexpected{"not implemented"s};
+						case intrinsic::erase:
+							return tl::unexpected{"not implemented"s};
+						default:
+							// unreachable
+							return tl::unexpected{"call to unknown intrinsic function"s};
+					}
+				});
+		}
+
+		auto negate(val::value const& value) -> eval_result {
+			return match(
+				value,
+				[](val::num num) -> eval_result { return -num; },
+				[](auto const& value) -> eval_result { return tl::unexpected{"cannot negate " + val::to_string(value)}; });
+		}
 	}
 
 	auto eval(environment::ptr const& env, ast::node const& node) -> eval_result {

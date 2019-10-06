@@ -14,9 +14,9 @@ TEST_SUITE("parser") {
 	TEST_CASE("kitchen sink") {
 		auto cluster_items = std::make_unique<std::vector<ast::node>>();
 		cluster_items->push_back(ast::make_tup(tok::num{"1"}, tok::num{"2"}));
-		cluster_items->push_back(ast::add{//
+		cluster_items->push_back(ast::make_tup(ast::add{//
 			make_node(ast::node{tok::num{"3"}}),
-			make_node(ast::node{tok::num{"4"}})});
+			make_node(ast::node{tok::num{"4"}})}));
 		auto const expected = //
 			make_node(ast::assign{
 				tok::sym{"f"},

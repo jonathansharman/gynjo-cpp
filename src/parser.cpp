@@ -70,14 +70,8 @@ namespace gynjo {
 							return std::pair{body_end, ast::lambda{make_node(std::move(tup)), make_node(std::move(body))}};
 						}
 					}
-					// Collapse singletons back into their contained values. This allows use of parentheses for
-					// value grouping without having to special-case interpretation when an argument is a singleton.
-					return std::pair{it,
-						tup.elems->size() == 1
-							// Extract singleton element.
-							? std::move(tup.elems->front())
-							// Return unmodified tuple.
-							: std::move(tup)};
+					// Not a lambda - just a tuple.
+					return std::pair{it, std::move(tup)};
 				},
 				// Intrinsic function
 				[&](intrinsic f) -> subparse_result {
