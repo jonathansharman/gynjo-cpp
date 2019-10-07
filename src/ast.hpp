@@ -34,6 +34,7 @@ namespace gynjo::ast {
 		struct cluster,
 		struct lambda,
 		struct tup,
+		struct list,
 		tok::boolean,
 		tok::num,
 		tok::sym>;
@@ -213,6 +214,29 @@ namespace gynjo::ast {
 		auto elems = std::make_unique<std::vector<node>>();
 		(elems->push_back(std::move(args)), ...);
 		return tup{std::move(elems)};
+	}
+
+	//! List expression.
+	struct list {
+		std::unique_ptr<std::vector<node>> elems;
+
+		list();
+		explicit list(std::unique_ptr<std::vector<node>> elems);
+
+		list(list const& that);
+		list(list&&) noexcept = default;
+
+		list& operator=(list const& that);
+		list& operator=(list&&) noexcept = default;
+
+		bool operator==(list const& that) const;
+	};
+
+	template <typename... Args>
+	auto make_list(Args&&... args) {
+		auto elems = std::make_unique<std::vector<node>>();
+		(elems->push_back(std::move(args)), ...);
+		return list{std::move(elems)};
 	}
 
 	//! Lambda expression.

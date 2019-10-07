@@ -89,6 +89,22 @@ namespace gynjo::ast {
 		return *elems == *that.elems;
 	}
 
+	list::list() : elems{std::make_unique<std::vector<node>>()} {}
+	list::list(std::unique_ptr<std::vector<node>> elems) : elems{std::move(elems)} {}
+
+	list::list(list const& that) {
+		elems = std::make_unique<std::vector<node>>(*that.elems);
+	}
+
+	list& list::operator=(list const& that) {
+		elems = std::make_unique<std::vector<node>>(*that.elems);
+		return *this;
+	}
+
+	bool list::operator==(list const& that) const {
+		return *elems == *that.elems;
+	}
+
 	bool lambda::operator==(lambda const& that) const noexcept {
 		return *params == *that.params && body == that.body;
 	}
@@ -159,6 +175,17 @@ namespace gynjo::ast {
 					}
 				}
 				result += ")";
+				return result;
+			},
+			[](list const& list) {
+				std::string result = "[";
+				if (!list.elems->empty()) {
+					result += to_string(list.elems->front());
+					for (auto it = list.elems->begin() + 1; it != list.elems->end(); ++it) {
+						result += ", " + to_string(*it);
+					}
+				}
+				result += "]";
 				return result;
 			},
 			[](tok::boolean const& b) { return ast::to_string(b); },

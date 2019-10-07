@@ -50,7 +50,7 @@ namespace gynjo {
 				});
 		}
 
-		auto application(val::closure const& c, val::list const& arg) -> eval_result {
+		auto application(val::closure const& c, val::tup const& arg) -> eval_result {
 			// The parser guarantees the parameter list is a tuple.
 			auto const& params = std::get<ast::tup>(*c.f.params);
 			// Ensure correct number of arguments.
@@ -74,13 +74,29 @@ namespace gynjo {
 				[&](intrinsic body) -> eval_result {
 					switch (body) {
 						case intrinsic::len:
-							return tl::unexpected{"not implemented"s};
+							return match(
+								*local_env->lookup("list"),
+								[](val::list const& list) -> eval_result { return val::num{list.elems->size()}; },
+								[](auto const& arg) -> eval_result {
+									return tl::unexpected{fmt::format("expected a list, found {}", val::to_string(arg))};
+								});
 						case intrinsic::at:
 							return tl::unexpected{"not implemented"s};
 						case intrinsic::push:
 							return tl::unexpected{"not implemented"s};
 						case intrinsic::pop:
-							return tl::unexpected{"not implemented"s};
+							return match(
+								*local_env->lookup("list"),
+								[](val::list const& list) -> eval_result {
+									if (list.elems->empty()) {
+										return tl::unexpected{"cannot pop from an empty list"s};
+									} else {
+										return list.elems->back();
+									}
+								},
+								[](auto const& arg) -> eval_result {
+									return tl::unexpected{fmt::format("expected a list, found {}", val::to_string(arg))};
+								});
 						case intrinsic::insert:
 							return tl::unexpected{"not implemented"s};
 						case intrinsic::erase:
@@ -103,7 +119,7 @@ namespace gynjo {
 	auto eval(environment::ptr const& env, ast::node const& node) -> eval_result {
 		return match(
 			node,
-			[](ast::nop) -> eval_result { return val::make_list(); },
+			[](ast::nop) -> eval_result { return val::make_tup(); },
 			[&](ast::imp const& imp) -> eval_result {
 				std::ifstream fin{imp.filename + ".gynj"};
 				if (!fin.is_open()) {
@@ -116,7 +132,7 @@ namespace gynjo {
 						return tl::unexpected{fmt::format("error in \"{}\": {}", imp.filename, line_result.error())};
 					}
 				}
-				return val::make_list();
+				return val::make_tup();
 			},
 			[&](ast::assign const& assign) {
 				return eval(env, *assign.rhs).and_then([&](val::value const& expr_value) -> eval_result {
@@ -334,11 +350,11 @@ namespace gynjo {
 							}
 							auto const& arg = items[i + 1];
 							// Apply function.
-							auto result = std::holds_alternative<val::list>(arg)
-								// Argument is already a list.
-								? application(std::get<val::closure>(f), std::get<val::list>(arg))
-								// Wrap argument in a list.
-								: application(std::get<val::closure>(f), val::make_list(arg));
+							auto result = std::holds_alternative<val::tup>(arg)
+								// Argument is already a tuple.
+								? application(std::get<val::closure>(f), std::get<val::tup>(arg))
+								// Wrap argument in a tuple.
+								: application(std::get<val::closure>(f), val::make_tup(arg));
 							if (result.has_value()) {
 								items[i] = std::move(result.value());
 								// Erase consumed item.
@@ -464,17 +480,29 @@ namespace gynjo {
 			[&](ast::lambda const& f) -> eval_result {
 				return val::closure{f, std::make_shared<environment>(env)};
 			},
-			[&](ast::tup const& tup) -> eval_result {
-				val::list list;
-				for (auto const& elem_ast : *tup.elems) {
+			[&](ast::tup const& ast_tup) -> eval_result {
+				val::tup val_tup;
+				for (auto const& elem_ast : *ast_tup.elems) {
 					auto elem_result = eval(env, elem_ast);
 					if (elem_result.has_value()) {
-						list.elems->push_back(std::move(elem_result.value()));
+						val_tup.elems->push_back(std::move(elem_result.value()));
 					} else {
 						return elem_result;
 					}
 				}
-				return list;
+				return val_tup;
+			},
+			[&](ast::list const& ast_list) -> eval_result {
+				val::list val_list;
+				for (auto const& elem_ast : *ast_list.elems) {
+					auto elem_result = eval(env, elem_ast);
+					if (elem_result.has_value()) {
+						val_list.elems->push_back(std::move(elem_result.value()));
+					} else {
+						return elem_result;
+					}
+				}
+				return val_list;
 			},
 			[](tok::boolean const& b) -> eval_result { return b; },
 			[](tok::num const& num) -> eval_result { return val::num{num.rep}; },
@@ -500,7 +528,7 @@ namespace gynjo {
 
 	auto print(eval_result result) -> void {
 		if (result.has_value()) {
-			if (result.value() != val::value{val::make_list()}) {
+			if (result.value() != val::value{val::make_tup()}) {
 				fmt::print("{}\n", gynjo::val::to_string(result.value()));
 			}
 		} else {

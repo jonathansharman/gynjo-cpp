@@ -37,8 +37,10 @@ namespace gynjo {
 			{std::regex{R"...((\*\*)|\^)...", flags}, [](sv) { return tok::exp{}; }},
 			{std::regex{R"...(\*)...", flags}, [](sv) { return tok::mul{}; }},
 			{std::regex{R"...(/)...", flags}, [](sv) { return tok::div{}; }},
-			{std::regex{R"...(\()...", flags}, [](sv) { return tok::lft{}; }},
-			{std::regex{R"...(\))...", flags}, [](sv) { return tok::rht{}; }},
+			{std::regex{R"...(\()...", flags}, [](sv) { return tok::lparen{}; }},
+			{std::regex{R"...(\))...", flags}, [](sv) { return tok::rparen{}; }},
+			{std::regex{R"...(\[)...", flags}, [](sv) { return tok::lsquare{}; }},
+			{std::regex{R"...(\])...", flags}, [](sv) { return tok::rsquare{}; }},
 			{std::regex{R"...(,)...", flags}, [](sv) { return tok::com{}; }},
 			// Value literals
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)...", flags}, [](sv sv) { return tok::num{sv.data()}; }},

@@ -31,11 +31,13 @@ TEST_SUITE("lexer") {
 			gt{},
 			geq{},
 			mul{},
-			lft{},
+			lparen{},
 			plus{},
 			minus{},
 			arrow{},
-			rht{},
+			rparen{},
+			lsquare{},
+			rsquare{},
 			exp{},
 			exp{},
 			mul{},
@@ -44,7 +46,7 @@ TEST_SUITE("lexer") {
 			num{"0"},
 			num{"0.1"},
 			com{}};
-		auto const actual = lex("===!=<<=>>=*(+-->)^***/.1 0 0.1,");
+		auto const actual = lex("===!=<<=>>=*(+-->)[]^***/.1 0 0.1,");
 		CHECK(expected == actual.value());
 	}
 

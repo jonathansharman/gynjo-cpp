@@ -13,7 +13,7 @@ TEST_SUITE("interpreter") {
 
 	TEST_CASE("empty statement") {
 		auto env = environment::make();
-		val::value const expected = val::make_list();
+		val::value const expected = val::make_tup();
 		auto const actual = eval(env, "");
 		CHECK(expected == actual.value());
 	}
@@ -137,7 +137,7 @@ TEST_SUITE("interpreter") {
 			CHECK(expected == actual.value());
 		}
 		SUBCASE("no else expression") {
-			val::value const expected = val::make_list();
+			val::value const expected = val::make_tup();
 			auto const actual = eval(env, "if false then 1");
 			CHECK(expected == actual.value());
 		}
@@ -164,16 +164,40 @@ TEST_SUITE("interpreter") {
 		CHECK(expected == actual.value());
 	}
 
-	TEST_CASE("tuple evaluation") {
+	TEST_CASE("tuples") {
 		auto env = environment::make();
+		SUBCASE("singleton collapses into contained value") {
+			val::value const expected = val::num{1};
+			auto const actual = eval(env, "(1)");
+			CHECK(expected == actual.value());
+		}
 		SUBCASE("nested tuple of numbers") {
-			val::value const expected = val::make_list(val::num{1}, val::make_list(val::num{2}, val::num{3}));
+			val::value const expected = val::make_tup(val::num{1}, val::make_tup(val::num{2}, val::num{3}));
 			auto const actual = eval(env, "(1, (2, 3))");
 			CHECK(expected == actual.value());
 		}
 		SUBCASE("nested tuple of numbers and booleans") {
-			val::value const expected = val::make_list(tok::boolean{true}, val::make_list(val::num{2}, tok::boolean{false}));
+			val::value const expected = val::make_tup(tok::boolean{true}, val::make_tup(val::num{2}, tok::boolean{false}));
 			auto const actual = eval(env, "(1 < 2, (2, false))");
+			CHECK(expected == actual.value());
+		}
+	}
+
+	TEST_CASE("lists") {
+		auto env = environment::make();
+		SUBCASE("singleton list") {
+			val::value const expected = val::make_list(val::num{1});
+			auto const actual = eval(env, "[1]");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("nested list of numbers") {
+			val::value const expected = val::make_list(val::num{1}, val::make_list(val::num{2}, val::num{3}));
+			auto const actual = eval(env, "[1, [2, 3]]");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("nested tuple of numbers and booleans") {
+			val::value const expected = val::make_list(tok::boolean{true}, val::make_list(val::num{2}, tok::boolean{false}));
+			auto const actual = eval(env, "[1 < 2, [2, false]]");
 			CHECK(expected == actual.value());
 		}
 	}

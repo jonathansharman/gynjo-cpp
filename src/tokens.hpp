@@ -88,12 +88,20 @@ namespace gynjo::tok {
 		auto operator<=>(exp const&) const noexcept = default;
 	};
 	//! Token for "(".
-	struct lft {
-		auto operator<=>(lft const&) const noexcept = default;
+	struct lparen {
+		auto operator<=>(lparen const&) const noexcept = default;
 	};
 	//! Token for ")".
-	struct rht {
-		auto operator<=>(rht const&) const noexcept = default;
+	struct rparen {
+		auto operator<=>(rparen const&) const noexcept = default;
+	};
+	//! Token for "[".
+	struct lsquare {
+		auto operator<=>(lsquare const&) const noexcept = default;
+	};
+	//! Token for "]".
+	struct rsquare {
+		auto operator<=>(rsquare const&) const noexcept = default;
 	};
 	//! Token for ",".
 	struct com {
@@ -120,7 +128,7 @@ namespace gynjo::tok {
 
 	//! Union type of all valid tokens.
 	using token =
-		std::variant<imp, assign, if_, then, else_, and_, or_, not_, eq, neq, lt, leq, gt, geq, plus, minus, mul, div, exp, lft, rht, com, arrow, boolean, num, sym, intrinsic>;
+		std::variant<imp, assign, if_, then, else_, and_, or_, not_, eq, neq, lt, leq, gt, geq, plus, minus, mul, div, exp, lparen, rparen, lsquare, rsquare, com, arrow, boolean, num, sym, intrinsic>;
 
 	//! Converts the token @p tok to a user-readable string.
 	inline auto to_string(token tok) -> std::string {
@@ -146,8 +154,10 @@ namespace gynjo::tok {
 			[](mul const&) { return "*"s; },
 			[](div const&) { return "/"s; },
 			[](exp const&) { return "^"s; },
-			[](lft const&) { return "("s; },
-			[](rht const&) { return ")"s; },
+			[](lparen const&) { return "("s; },
+			[](rparen const&) { return ")"s; },
+			[](lsquare const&) { return "["s; },
+			[](rsquare const&) { return "]"s; },
 			[](com const&) { return ","s; },
 			[](arrow const&) { return "->"s; },
 			[](boolean const& b) { return b.value ? "true"s : "false"s; },

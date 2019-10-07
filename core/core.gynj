@@ -16,8 +16,8 @@ ctof = c -> 9c/5 + 32
 head = (head, tail) -> head
 tail = (head, tail) -> tail
 
-NTH_HELPER = (f, list, n) -> if n == 0 then head(list) else f(tail(list))
+NTH_HELPER = (self, list, n) -> if n == 0 then head(list) else self(self, tail(list), n-1)
 nth = (list, n) -> NTH_HELPER(NTH_HELPER, list, n)
 
-LEN_HELPER = (f, list) -> if list == () then 0 else 1 + f(f, list)
-len = list -> LEN_HELPER(LEN_HELPER, list)
+LEN_HELPER = (self, list) -> if list == () then 0 else 1 + self(self, tail(list))
+len_prime = list -> LEN_HELPER(LEN_HELPER, list)

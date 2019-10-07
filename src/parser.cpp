@@ -32,7 +32,7 @@ namespace gynjo {
 			return match(
 				first_token,
 				// Tuple or lambda
-				[&](tok::lft const&) -> subparse_result {
+				[&](tok::lparen const&) -> subparse_result {
 					ast::tup tup;
 					// Keep track of whether all tup elements are symbols (possible lambda parameter list).
 					bool could_be_lambda = true;
@@ -58,7 +58,9 @@ namespace gynjo {
 						}
 					}
 					// Parse close parenthesis.
-					if (it == end || !std::holds_alternative<tok::rht>(*it)) { return tl::unexpected{"expected ')'"s}; }
+					if (it == end || !std::holds_alternative<tok::rparen>(*it)) {
+						return tl::unexpected{"expected ')'"s};
+					}
 					++it;
 					// Check for lambda expression.
 					if (could_be_lambda) {
@@ -78,6 +80,35 @@ namespace gynjo {
 							? std::move(tup.elems->front())
 							// Return unmodified tuple.
 							: std::move(tup)};
+				},
+				// List
+				[&](tok::lsquare const&) -> subparse_result {
+					ast::list list;
+					// Try to parse an expression.
+					auto first_result = parse_expr(it, end);
+					if (first_result.has_value()) {
+						auto [first_end, first] = std::move(first_result.value());
+						it = first_end;
+						list.elems->push_back(std::move(first));
+						// Try to parse additional comma-delimited expressions.
+						while (it != end && std::holds_alternative<tok::com>(*it)) {
+							++it;
+							auto next_result = parse_expr(it, end);
+							if (next_result.has_value()) {
+								auto [next_end, next] = std::move(next_result.value());
+								it = next_end;
+								list.elems->push_back(std::move(next));
+							} else {
+								return tl::unexpected{"expected expression after ','"s};
+							}
+						}
+					}
+					// Parse close square bracket.
+					if (it == end || !std::holds_alternative<tok::rsquare>(*it)) {
+						return tl::unexpected{"expected ']'"s};
+					}
+					++it;
+					return std::pair{it, std::move(list)};
 				},
 				// Intrinsic function
 				[&](intrinsic f) -> subparse_result {
@@ -187,7 +218,7 @@ namespace gynjo {
 							// Consume "^" and maybe "-".
 							return std::tuple{negative ? 2 : 1, true, ast::cluster::connector::exp};
 						},
-						[&negations](tok::lft) {
+						[&negations](tok::lparen) {
 							negations.push_back(false);
 							// Don't consume any tokens.
 							return std::tuple{0, true, ast::cluster::connector::adj_paren};

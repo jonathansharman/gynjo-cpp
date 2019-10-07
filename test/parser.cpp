@@ -31,21 +31,21 @@ TEST_SUITE("parser") {
 		auto const actual = parse(std::vector<tok::token>{//
 			tok::sym{"f"},
 			tok::assign{},
-			tok::lft{},
-			tok::rht{},
+			tok::lparen{},
+			tok::rparen{},
 			tok::arrow{},
 			tok::minus{},
-			tok::lft{},
+			tok::lparen{},
 			tok::num{"1"},
 			tok::com{},
 			tok::num{"2"},
-			tok::rht{},
+			tok::rparen{},
 			tok::mul{},
-			tok::lft{},
+			tok::lparen{},
 			tok::num{"3"},
 			tok::plus{},
 			tok::num{"4"},
-			tok::rht{}});
+			tok::rparen{}});
 
 		CHECK(to_string(*expected) == to_string(actual.value()));
 	}
