@@ -2,11 +2,9 @@ abs = x -> if x < 0 then -x else x
 
 // Combinatorics
 
-FACTORIAL_HELPER = (f, n) -> if n < 2 then 1 else n f(f, n-1)
-fact = n -> FACTORIAL_HELPER(FACTORIAL_HELPER, n)
+fact = n -> if n < 2 then 1 else n fact(n-1)
 
-NPK_HELPER = (f, n, k) -> if k == 0 then 1 else n f(f, n-1, k-1)
-nPk = (n, k) -> NPK_HELPER(NPK_HELPER, n, k)
+nPk = (n, k) -> if k == 0 then 1 else n nPk(n-1, k-1)
 
 nCk = (n, k) -> nPk(n, k) / fact(k)
 
@@ -15,23 +13,16 @@ ctof = c -> 9c/5 + 32
 
 // List operations
 
-LEN_HELPER = (self, list) -> if list == [] then 0 else 1 + self(self, pop(list))
-len = list -> LEN_HELPER(LEN_HELPER, list)
+len = list -> if list == [] then 0 else 1 + len(pop(list))
 
-NTH_HELPER = (self, list, n) -> if n == 0 then top(list) else self(self, pop(list), n-1)
-nth = (list, n) -> NTH_HELPER(NTH_HELPER, list, n)
+nth = (list, n) -> if n == 0 then top(list) else nth(pop(list), n-1)
 
-APPEND_HELPER = (self, list, value) -> if list == [] then [value] else push(self(self, pop(list), value), top(list))
-append = (list, value) -> APPEND_HELPER(APPEND_HELPER, list, value)
+append = (list, value) -> if list == [] then [value] else push(append(pop(list), value), top(list))
 
-REVERSE_HELPER = (self, list) -> if list == [] then [] else append(self(self, pop(list)), top(list))
-reverse = list -> REVERSE_HELPER(REVERSE_HELPER, list)
+reverse = list -> if list == [] then [] else append(reverse(pop(list)), top(list))
 
-CONCAT_HELPER = (self, left_list, right_list) -> if left_list == [] then right_list else push(self(self, pop(left_list), right_list), top(left_list))
-concat = (left_list, right_list) -> CONCAT_HELPER(CONCAT_HELPER, left_list, right_list)
+concat = (left_list, right_list) -> if left_list == [] then right_list else push(concat(pop(left_list), right_list), top(left_list))
 
-INSERT_HELPER = (self, list, index, value) -> if index == 0 then push(list, value) else push(self(self, pop(list), index-1, value), top(list))
-insert = (list, index, value) -> INSERT_HELPER(INSERT_HELPER, list, index, value)
+insert = (list, index, value) -> if index == 0 then push(list, value) else push(insert(pop(list), index-1, value), top(list))
 
-REMOVE_HELPER = (self, list, index) -> if index == 0 then pop(list) else push(self(self, pop(list), index-1), top(list))
-remove = (list, index) -> REMOVE_HELPER(REMOVE_HELPER, list, index)
+remove = (list, index) -> if index == 0 then pop(list) else push(remove(pop(list), index-1), top(list))

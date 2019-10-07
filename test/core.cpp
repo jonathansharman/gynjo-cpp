@@ -13,7 +13,9 @@ TEST_SUITE("core libraries") {
 
 	auto env = [] {
 		auto result = environment::make();
+#ifdef _DEBUG
 		load_core_libs(result);
+#endif
 		return result;
 	}();
 

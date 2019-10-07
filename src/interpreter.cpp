@@ -138,7 +138,10 @@ namespace gynjo {
 			},
 			[&](ast::assign const& assign) {
 				return eval(env, *assign.rhs).and_then([&](val::value const& expr_value) -> eval_result {
-					env->local_vars.emplace(assign.symbol.name, expr_value);
+					// If the symbol is undefined, initialize it to empty. This allows recursive functions.
+					env->local_vars.emplace(assign.symbol.name, val::empty{});
+					// Now perform the actual assignment, overwriting whatever's there.
+					env->local_vars.insert_or_assign(assign.symbol.name, expr_value);
 					return expr_value;
 				});
 			},
