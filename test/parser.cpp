@@ -29,8 +29,9 @@ TEST_SUITE("parser") {
 			});
 
 		auto const actual = parse(std::vector<tok::token>{//
+			tok::let{},
 			tok::sym{"f"},
-			tok::assign{},
+			tok::eq{},
 			tok::lparen{},
 			tok::rparen{},
 			tok::arrow{},

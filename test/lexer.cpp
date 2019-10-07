@@ -23,8 +23,8 @@ TEST_SUITE("lexer") {
 
 	TEST_CASE("numbers, operators, and separators") {
 		auto const expected = std::vector<token>{//
+			let{},
 			eq{},
-			assign{},
 			neq{},
 			lt{},
 			leq{},
@@ -46,7 +46,7 @@ TEST_SUITE("lexer") {
 			num{"0"},
 			num{"0.1"},
 			com{}};
-		auto const actual = lex("===!=<<=>>=*(+-->)[]^***/.1 0 0.1,");
+		auto const actual = lex("let=!=<<=>>=*(+-->)[]^***/.1 0 0.1,");
 		CHECK(expected == actual.value());
 	}
 

@@ -1,28 +1,28 @@
-abs = x -> if x < 0 then -x else x
+let abs = x -> if x < 0 then -x else x
 
 // Combinatorics
 
-fact = n -> if n < 2 then 1 else n fact(n-1)
+let fact = n -> if n < 2 then 1 else n fact(n-1)
 
-nPk = (n, k) -> if k == 0 then 1 else n nPk(n-1, k-1)
+let nPk = (n, k) -> if k = 0 then 1 else n nPk(n-1, k-1)
 
-nCk = (n, k) -> nPk(n, k) / fact(k)
+let nCk = (n, k) -> nPk(n, k) / fact(k)
 
-ftoc = f -> 5(f - 32)/9
-ctof = c -> 9c/5 + 32
+let ftoc = f -> 5(f - 32)/9
+let ctof = c -> 9c/5 + 32
 
 // List operations
 
-len = list -> if list == [] then 0 else 1 + len(pop(list))
+let len = list -> if list = [] then 0 else 1 + len(pop(list))
 
-nth = (list, n) -> if n == 0 then top(list) else nth(pop(list), n-1)
+let nth = (list, n) -> if n = 0 then top(list) else nth(pop(list), n-1)
 
-append = (list, value) -> if list == [] then [value] else push(append(pop(list), value), top(list))
+let append = (list, value) -> if list = [] then [value] else push(append(pop(list), value), top(list))
 
-reverse = list -> if list == [] then [] else append(reverse(pop(list)), top(list))
+let reverse = list -> if list = [] then [] else append(reverse(pop(list)), top(list))
 
-concat = (left_list, right_list) -> if left_list == [] then right_list else push(concat(pop(left_list), right_list), top(left_list))
+let concat = (left_list, right_list) -> if left_list = [] then right_list else push(concat(pop(left_list), right_list), top(left_list))
 
-insert = (list, index, value) -> if index == 0 then push(list, value) else push(insert(pop(list), index-1, value), top(list))
+let insert = (list, index, value) -> if index = 0 then push(list, value) else push(insert(pop(list), index-1, value), top(list))
 
-remove = (list, index) -> if index == 0 then pop(list) else push(remove(pop(list), index-1), top(list))
+let remove = (list, index) -> if index = 0 then pop(list) else push(remove(pop(list), index-1), top(list))

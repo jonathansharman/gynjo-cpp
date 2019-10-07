@@ -455,22 +455,27 @@ namespace gynjo {
 
 		//! Parses an assignment operation.
 		auto parse_assignment(token_it begin, token_it end) -> subparse_result {
-			if (begin == end) { return tl::unexpected{"expected assignment"s}; }
+			// Parse "let".
+			if (begin == end || !std::holds_alternative<tok::let>(*begin)) {
+				return tl::unexpected{"expected assignment"s};
+			}
+			auto const lhs_begin = begin + 1;
+			// Parse LHS.
 			return match(
-				*begin,
-				// Symbol to assign to
+				*lhs_begin,
 				[&](tok::sym symbol) -> subparse_result {
-					auto assign_begin = begin + 1;
-					if (assign_begin != end && std::holds_alternative<tok::assign>(*(assign_begin))) {
-						// Get RHS.
-						return parse_expr(assign_begin + 1, end).and_then([&](std::pair<token_it, ast::node> rhs_result) -> subparse_result {
-							// Assemble assignment from symbol and RHS.
-							auto [rhs_end, rhs] = std::move(rhs_result);
-							return std::pair{rhs_end, ast::assign{symbol, make_node(std::move(rhs))}};
-						});
-					} else {
+					auto const eq_begin = lhs_begin + 1;
+					// Parse "=".
+					if (eq_begin == end || !std::holds_alternative<tok::eq>(*(eq_begin))) {
 						return tl::unexpected{"expected '='"s};
 					}
+					auto const rhs_begin = eq_begin + 1;
+					// Parse RHS.
+					return parse_expr(rhs_begin, end).and_then([&](std::pair<token_it, ast::node> rhs_result) -> subparse_result {
+						// Assemble assignment from symbol and RHS.
+						auto [rhs_end, rhs] = std::move(rhs_result);
+						return std::pair{rhs_end, ast::assign{symbol, make_node(std::move(rhs))}};
+					});
 				},
 				// Otherwise, not a valid assignment
 				[](auto const&) -> subparse_result { return tl::unexpected{"expected symbol"s}; });

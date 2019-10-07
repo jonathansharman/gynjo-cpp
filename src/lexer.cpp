@@ -24,8 +24,7 @@ namespace gynjo {
 			// Comment (ignored)
 			{std::regex{R"...(//.*)...", flags}, [](sv) { return std::nullopt; }},
 			// Operators/separators
-			{std::regex{R"...(==)...", flags}, [](sv) { return tok::eq{}; }},
-			{std::regex{R"...(=)...", flags}, [](sv) { return tok::assign{}; }},
+			{std::regex{R"...(=)...", flags}, [](sv) { return tok::eq{}; }},
 			{std::regex{R"...(!=)...", flags}, [](sv) { return tok::neq{}; }},
 			{std::regex{R"...(<=)...", flags}, [](sv) { return tok::leq{}; }},
 			{std::regex{R"...(<)...", flags}, [](sv) { return tok::lt{}; }},
@@ -52,6 +51,7 @@ namespace gynjo {
 			{std::regex{R"...(push\b)...", flags}, [](sv) { return intrinsic::push; }},
 			// Keywords
 			{std::regex{R"...(import\b)...", flags}, [](sv) { return tok::imp{}; }},
+			{std::regex{R"...(let\b)...", flags}, [](sv) { return tok::let{}; }},
 			{std::regex{R"...(if\b)...", flags}, [](sv) { return tok::if_{}; }},
 			{std::regex{R"...(then\b)...", flags}, [](sv) { return tok::then{}; }},
 			{std::regex{R"...(else\b)...", flags}, [](sv) { return tok::else_{}; }},
