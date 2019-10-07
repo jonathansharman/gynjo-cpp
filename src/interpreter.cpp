@@ -73,34 +73,36 @@ namespace gynjo {
 				[&](ast::ptr const& body) -> eval_result { return eval(local_env, *body); },
 				[&](intrinsic body) -> eval_result {
 					switch (body) {
-						case intrinsic::len:
+						case intrinsic::top:
 							return match(
 								*local_env->lookup("list"),
-								[](val::list const& list) -> eval_result { return val::num{list.elems->size()}; },
+								[](val::list const& list) -> eval_result { return *list.head; },
 								[](auto const& arg) -> eval_result {
-									return tl::unexpected{fmt::format("expected a list, found {}", val::to_string(arg))};
+									return tl::unexpected{
+										fmt::format("top() expected a non-empty list, found {}", val::to_string(arg))};
 								});
-						case intrinsic::at:
-							return tl::unexpected{"not implemented"s};
-						case intrinsic::push:
-							return tl::unexpected{"not implemented"s};
 						case intrinsic::pop:
 							return match(
 								*local_env->lookup("list"),
-								[](val::list const& list) -> eval_result {
-									if (list.elems->empty()) {
-										return tl::unexpected{"cannot pop from an empty list"s};
-									} else {
-										return list.elems->back();
-									}
+								[](val::list const& list) -> eval_result { return *list.tail; },
+								[](auto const& arg) -> eval_result {
+									return tl::unexpected{
+										fmt::format("pop() expected a non-empty list, found {}", val::to_string(arg))};
+								});
+						case intrinsic::push:
+							return match(
+								*local_env->lookup("list"),
+								[&](val::empty) -> eval_result {
+									return val::list{
+										val::make_value(*local_env->lookup("value")), val::make_value(val::empty{})};
+								},
+								[&](val::list const& list) -> eval_result {
+									return val::list{val::make_value(*local_env->lookup("value")), val::make_value(list)};
 								},
 								[](auto const& arg) -> eval_result {
-									return tl::unexpected{fmt::format("expected a list, found {}", val::to_string(arg))};
+									return tl::unexpected{
+										fmt::format("push() expected a list, found {}", val::to_string(arg))};
 								});
-						case intrinsic::insert:
-							return tl::unexpected{"not implemented"s};
-						case intrinsic::erase:
-							return tl::unexpected{"not implemented"s};
 						default:
 							// unreachable
 							return tl::unexpected{"call to unknown intrinsic function"s};
@@ -210,31 +212,13 @@ namespace gynjo {
 				});
 			},
 			[&](ast::eq const& eq) {
-				return eval_binary(env, *eq.left, *eq.right, [](val::value const& a, val::value const& b) -> eval_result {
-					return match2(
-						a,
-						b,
-						[]<typename T>(T const& left, T const& right)->eval_result {
-							return tok::boolean{left == right};
-						},
-						[](auto const& left, auto const& right) -> eval_result {
-							return tl::unexpected{
-								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
-						});
+				return eval_binary(env, *eq.left, *eq.right, [](val::value const& left, val::value const& right) -> eval_result {
+					return tok::boolean{left == right};
 				});
 			},
 			[&](ast::neq const& neq) {
-				return eval_binary(env, *neq.left, *neq.right, [](val::value const& a, val::value const& b) -> eval_result {
-					return match2(
-						a,
-						b,
-						[]<typename T>(T const& left, T const& right)->eval_result {
-							return tok::boolean{left != right};
-						},
-						[](auto const& left, auto const& right) -> eval_result {
-							return tl::unexpected{
-								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
-						});
+				return eval_binary(env, *neq.left, *neq.right, [](val::value const& left, val::value const& right) -> eval_result {
+					return tok::boolean{left != right};
 				});
 			},
 			[&](ast::lt const& lt) {
@@ -493,11 +477,12 @@ namespace gynjo {
 				return val_tup;
 			},
 			[&](ast::list const& ast_list) -> eval_result {
-				val::list val_list;
-				for (auto const& elem_ast : *ast_list.elems) {
+				val::value val_list = val::empty{};
+				for (auto const& elem_ast : *(ast_list.elems)) {
 					auto elem_result = eval(env, elem_ast);
 					if (elem_result.has_value()) {
-						val_list.elems->push_back(std::move(elem_result.value()));
+						val_list = val::list{
+							val::make_value(std::move(elem_result.value())), val::make_value(std::move(val_list))};
 					} else {
 						return elem_result;
 					}
@@ -510,7 +495,7 @@ namespace gynjo {
 				if (auto lookup = env->lookup(sym.name)) {
 					return *lookup;
 				} else {
-					return tl::unexpected{fmt::format("'{}' is not defined", sym.name)};
+					return tl::unexpected{fmt::format("'{}' is undefined", sym.name)};
 				}
 			});
 	}

@@ -106,8 +106,11 @@ TEST_SUITE("interpreter") {
 			CHECK(!eval(env, "false < true").has_value());
 			CHECK(!eval(env, "(1, 2, 3) < (3, 2, 1)").has_value());
 		}
-		SUBCASE("different types cannot be compared") {
-			CHECK(!eval(env, "true == (1, 2, 3)").has_value());
+		SUBCASE("different types compare inequal") {
+			CHECK(f == eval(env, "[1, 2, 3] == (1, 2, 3)").value());
+			CHECK(t == eval(env, "(x -> x) != false").value());
+		}
+		SUBCASE("different types cannot be order-compared") {
 			CHECK(!eval(env, "(x -> x) < false").has_value());
 		}
 		SUBCASE("comparison precedes equality") {
@@ -191,12 +194,12 @@ TEST_SUITE("interpreter") {
 			CHECK(expected == actual.value());
 		}
 		SUBCASE("nested list of numbers") {
-			val::value const expected = val::make_list(val::num{1}, val::make_list(val::num{2}, val::num{3}));
+			val::value const expected = val::make_list(val::make_list(val::num{3}, val::num{2}), val::num{1});
 			auto const actual = eval(env, "[1, [2, 3]]");
 			CHECK(expected == actual.value());
 		}
-		SUBCASE("nested tuple of numbers and booleans") {
-			val::value const expected = val::make_list(tok::boolean{true}, val::make_list(val::num{2}, tok::boolean{false}));
+		SUBCASE("nested list of numbers and booleans") {
+			val::value const expected = val::make_list(val::make_list(tok::boolean{false}, val::num{2}), tok::boolean{true});
 			auto const actual = eval(env, "[1 < 2, [2, false]]");
 			CHECK(expected == actual.value());
 		}

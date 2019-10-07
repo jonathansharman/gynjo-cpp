@@ -9,6 +9,7 @@
 
 #include <fmt/format.h>
 
+#include <deque>
 #include <memory>
 #include <string>
 #include <vector>
@@ -218,10 +219,10 @@ namespace gynjo::ast {
 
 	//! List expression.
 	struct list {
-		std::unique_ptr<std::vector<node>> elems;
+		std::unique_ptr<std::deque<node>> elems;
 
 		list();
-		explicit list(std::unique_ptr<std::vector<node>> elems);
+		explicit list(std::unique_ptr<std::deque<node>> elems);
 
 		list(list const& that);
 		list(list&&) noexcept = default;

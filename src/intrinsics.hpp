@@ -7,11 +7,13 @@
 
 namespace gynjo {
 	//! Represents an intrinsic Gynjo function or its body, depending on context.
-	enum class intrinsic { len, at, push, pop, insert, erase };
+	enum class intrinsic {
+		// Fundamental list operations
+		top,
+		pop,
+		push
+	};
 
 	//! The user-readable name of intrinsic function @p f.
 	auto name(intrinsic f) -> std::string;
-
-	//! The required number of arguments to @p f.
-	auto arity(intrinsic f) -> std::size_t;
 }

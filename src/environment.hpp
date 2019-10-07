@@ -31,4 +31,7 @@ namespace gynjo {
 		//! Returns the value of the variable with name @name or nullopt if the variable is undefined.
 		auto lookup(std::string const& name) -> std::optional<val::value> const;
 	};
+
+	//! Loads the core libraries into @p env.
+	auto load_core_libs(environment::ptr const& env) -> void;
 }

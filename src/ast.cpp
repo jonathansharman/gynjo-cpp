@@ -89,15 +89,15 @@ namespace gynjo::ast {
 		return *elems == *that.elems;
 	}
 
-	list::list() : elems{std::make_unique<std::vector<node>>()} {}
-	list::list(std::unique_ptr<std::vector<node>> elems) : elems{std::move(elems)} {}
+	list::list() : elems{std::make_unique<std::deque<node>>()} {}
+	list::list(std::unique_ptr<std::deque<node>> elems) : elems{std::move(elems)} {}
 
 	list::list(list const& that) {
-		elems = std::make_unique<std::vector<node>>(*that.elems);
+		elems = std::make_unique<std::deque<node>>(*that.elems);
 	}
 
 	list& list::operator=(list const& that) {
-		elems = std::make_unique<std::vector<node>>(*that.elems);
+		elems = std::make_unique<std::deque<node>>(*that.elems);
 		return *this;
 	}
 
@@ -188,7 +188,7 @@ namespace gynjo::ast {
 				result += "]";
 				return result;
 			},
-			[](tok::boolean const& b) { return ast::to_string(b); },
+			[](tok::boolean const& b) { return tok::to_string(b); },
 			[](tok::num const& num) { return num.rep; },
 			[](tok::sym const& sym) { return sym.name; });
 	}

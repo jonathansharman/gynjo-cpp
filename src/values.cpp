@@ -12,16 +12,12 @@ namespace gynjo::val {
 
 	tup::tup(std::shared_ptr<std::vector<value>> elems) : elems{std::move(elems)} {}
 
-	bool tup::operator==(tup const& that) const {
+	bool tup::operator==(tup const& that) const noexcept {
 		return *elems == *that.elems;
 	}
 
-	list::list() : elems{std::make_shared<std::vector<value>>()} {}
-
-	list::list(std::shared_ptr<std::vector<value>> elems) : elems{std::move(elems)} {}
-
-	bool list::operator==(list const& that) const {
-		return *elems == *that.elems;
+	bool list::operator==(list const& that) const noexcept {
+		return *head == *that.head && *tail == *that.tail;
 	}
 
 	auto to_string(value const& val) -> std::string {
@@ -41,13 +37,14 @@ namespace gynjo::val {
 				result += ")";
 				return result;
 			},
+			[](empty) { return "[]"s; },
 			[](list const& list) {
-				std::string result = "[";
-				if (!list.elems->empty()) {
-					result += to_string(list.elems->front());
-					for (auto it = list.elems->begin() + 1; it != list.elems->end(); ++it) {
-						result += ", " + to_string(*it);
-					}
+				std::string result = "[" + to_string(*list.head);
+				auto current = list.tail;
+				while (!std::holds_alternative<empty>(*current)) {
+					auto const& current_list = std::get<val::list>(*current);
+					result += ", " + to_string(*current_list.head);
+					current = current_list.tail;
 				}
 				result += "]";
 				return result;

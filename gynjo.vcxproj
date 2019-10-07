@@ -147,6 +147,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\parser.cpp" />
     <ClCompile Include="src\values.cpp" />
+    <ClCompile Include="test\core.cpp" />
     <ClCompile Include="test\interpreter.cpp" />
     <ClCompile Include="test\lexer.cpp" />
     <ClCompile Include="test\parser.cpp" />

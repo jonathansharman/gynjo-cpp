@@ -89,7 +89,7 @@ namespace gynjo {
 					if (first_result.has_value()) {
 						auto [first_end, first] = std::move(first_result.value());
 						it = first_end;
-						list.elems->push_back(std::move(first));
+						list.elems->push_front(std::move(first));
 						// Try to parse additional comma-delimited expressions.
 						while (it != end && std::holds_alternative<tok::com>(*it)) {
 							++it;
@@ -97,7 +97,7 @@ namespace gynjo {
 							if (next_result.has_value()) {
 								auto [next_end, next] = std::move(next_result.value());
 								it = next_end;
-								list.elems->push_back(std::move(next));
+								list.elems->push_front(std::move(next));
 							} else {
 								return tl::unexpected{"expected expression after ','"s};
 							}
@@ -114,18 +114,12 @@ namespace gynjo {
 				[&](intrinsic f) -> subparse_result {
 					auto params = [&] {
 						switch (f) {
-							case intrinsic::len:
+							case intrinsic::top:
 								return ast::make_tup(tok::sym{"list"});
-							case intrinsic::at:
-								return ast::make_tup(tok::sym{"list, index"});
-							case intrinsic::push:
-								return ast::make_tup(tok::sym{"list, value"});
 							case intrinsic::pop:
 								return ast::make_tup(tok::sym{"list"});
-							case intrinsic::insert:
-								return ast::make_tup(tok::sym{"list, index, value"});
-							case intrinsic::erase:
-								return ast::make_tup(tok::sym{"list, index"});
+							case intrinsic::push:
+								return ast::make_tup(tok::sym{"list"}, tok::sym{"value"});
 							default:
 								// unreachable
 								return ast::make_tup();
@@ -517,7 +511,7 @@ namespace gynjo {
 			if (result.has_value()) {
 				auto [expr_end, expr] = std::move(result.value());
 				if (expr_end != end) {
-					return tl::unexpected{"unused input"s};
+					return tl::unexpected{fmt::format("unused input starting at token \"{}\"", to_string(*expr_end))};
 				} else {
 					return std::move(expr);
 				}

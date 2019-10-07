@@ -18,7 +18,10 @@ namespace gynjo {
 		using num = boost::multiprecision::cpp_dec_float_100;
 
 		//! Union type of all Gynjo value types.
-		using value = std::variant<tok::boolean, num, struct tup, struct list, struct closure>;
+		using value = std::variant<tok::boolean, num, struct tup, struct empty, struct list, struct closure>;
+
+		//! Shared pointer to a Gynjo value.
+		using ptr = std::shared_ptr<value>;
 
 		//! A lambda along with the environment in which it was called.
 		struct closure {
@@ -38,7 +41,7 @@ namespace gynjo {
 			tup();
 			explicit tup(std::shared_ptr<std::vector<value>> elems);
 
-			bool operator==(tup const& that) const;
+			bool operator==(tup const& that) const noexcept;
 		};
 
 		template <typename... Args>
@@ -48,21 +51,32 @@ namespace gynjo {
 			return tup{std::move(elems)};
 		}
 
-		//! List of Gynjo values.
-		struct list {
-			std::shared_ptr<std::vector<value>> elems;
-
-			list();
-			explicit list(std::shared_ptr<std::vector<value>> elems);
-
-			bool operator==(list const& that) const;
+		//! The empty Gynjo type.
+		struct empty {
+			bool operator==(empty const& that) const noexcept = default;
 		};
+
+		//! Functional list of Gynjo values.
+		struct list {
+			//! The top value of this list.
+			ptr head;
+			//! Either another list or empty.
+			ptr tail;
+
+			bool operator==(list const& that) const noexcept;
+		};
+
+		//! Convenience function for creating a value pointer from @p value.
+		template <typename T>
+		auto make_value(T&& value) {
+			return std::make_shared<val::value>(std::forward<T>(value));
+		}
 
 		template <typename... Args>
 		auto make_list(Args&&... args) {
-			auto elems = std::make_shared<std::vector<value>>();
-			(elems->push_back(std::move(args)), ...);
-			return list{std::move(elems)};
+			val::value result = val::empty{};
+			((result = val::list{make_value(std::move(args)), make_value(std::move(result))}), ...);
+			return result;
 		}
 
 		//! Converts the value @p val to a user-readable string.
