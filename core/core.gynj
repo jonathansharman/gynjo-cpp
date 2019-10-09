@@ -26,3 +26,9 @@ let concat = (left_list, right_list) -> if left_list = [] then right_list else p
 let insert = (list, index, value) -> if index = 0 then push(list, value) else push(insert(pop(list), index-1, value), top(list))
 
 let remove = (list, index) -> if index = 0 then pop(list) else push(remove(pop(list), index-1), top(list))
+
+let map = (list, f) -> if list = [] then [] else push(map(pop(list), f), f(top(list)))
+
+let reduce = (list, zero, f) -> if list = [] then zero else reduce(pop(list), f(zero, top(list)), f)
+
+let flatmap = (list, f) -> reduce(map(list, f), [], concat)

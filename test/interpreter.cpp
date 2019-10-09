@@ -186,7 +186,7 @@ TEST_SUITE("interpreter") {
 		}
 	}
 
-	TEST_CASE("lists") {
+	TEST_CASE("list construction") {
 		auto env = environment::make();
 		SUBCASE("singleton list") {
 			val::value const expected = val::make_list(val::num{1});
@@ -202,6 +202,48 @@ TEST_SUITE("interpreter") {
 			val::value const expected = val::make_list(val::make_list(tok::boolean{false}, val::num{2}), tok::boolean{true});
 			auto const actual = eval(env, "[1 < 2, [2, false]]");
 			CHECK(expected == actual.value());
+		}
+	}
+
+	TEST_CASE("math operations on lists") {
+		auto env = environment::make();
+		SUBCASE("addition") {
+			val::value const expected = val::make_list(val::num{4}, val::num{3}, val::num{2});
+			auto const actual1 = eval(env, "[1, 2, 3] + 1");
+			CHECK(expected == actual1.value());
+			auto const actual2 = eval(env, "1 + [1, 2, 3]");
+			CHECK(expected == actual2.value());
+		}
+		SUBCASE("subtraction") {
+			val::value const expected1 = val::make_list(val::num{3}, val::num{2}, val::num{1});
+			auto const actual1 = eval(env, "[2, 3, 4]-1");
+			CHECK(expected1 == actual1.value());
+			val::value const expected2 = val::make_list(val::num{1}, val::num{2}, val::num{3});
+			auto const actual2 = eval(env, "4-[1, 2, 3]");
+			CHECK(expected2 == actual2.value());
+		}
+		SUBCASE("multiplication") {
+			val::value const expected = val::make_list(val::num{6}, val::num{4}, val::num{2});
+			auto const actual1 = eval(env, "[1, 2, 3]2");
+			CHECK(expected == actual1.value());
+			auto const actual2 = eval(env, "2[1, 2, 3]");
+			CHECK(expected == actual2.value());
+		}
+		SUBCASE("division") {
+			val::value const expected1 = val::make_list(val::num{3}, val::num{2}, val::num{1});
+			auto const actual1 = eval(env, "[2, 4, 6]/2");
+			CHECK(expected1 == actual1.value());
+			val::value const expected2 = val::make_list(val::num{2}, val::num{3}, val::num{6});
+			auto const actual2 = eval(env, "6/[1, 2, 3]");
+			CHECK(expected2 == actual2.value());
+		}
+		SUBCASE("exponentiation") {
+			val::value const expected1 = val::make_list(val::num{9}, val::num{4}, val::num{1});
+			auto const actual1 = eval(env, "[1, 2, 3]^2");
+			CHECK(expected1 == actual1.value());
+			val::value const expected2 = val::make_list(val::num{8}, val::num{4}, val::num{2});
+			auto const actual2 = eval(env, "2^[1, 2, 3]");
+			CHECK(expected2 == actual2.value());
 		}
 	}
 

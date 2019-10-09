@@ -72,5 +72,20 @@ TEST_SUITE("core libraries") {
 			auto const actual = eval(env, "remove([1, 2, 3], 1)");
 			CHECK(expected == actual.value());
 		}
+		SUBCASE("map") {
+			val::value const expected = val::make_list(9, 4, 1);
+			auto const actual = eval(env, "map([1, 2, 3], x -> x^2)");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("reduce") {
+			val::value const expected = val::num{6};
+			auto const actual = eval(env, "reduce([1, 2, 3], 0, (a, b) -> a + b)");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("flatmap") {
+			val::value const expected = val::make_list(3, 3, 2, 2, 1, 1);
+			auto const actual = eval(env, "flatmap([1, 2, 3], x -> [x, x])");
+			CHECK(expected == actual.value());
+		}
 	}
 }

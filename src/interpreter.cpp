@@ -41,9 +41,39 @@ namespace gynjo {
 			return match2(
 				left,
 				right,
+				// Basic
 				[&](val::num const& left, val::num const& right) -> eval_result {
 					return std::forward<F>(op)(left, right);
 				},
+				// Empty list
+				[](val::empty const&, val::num const&) -> eval_result { return val::empty{}; },
+				[](val::num const&, val::empty const&) -> eval_result { return val::empty{}; },
+				// Non-empty list
+				[&](val::list const& left, val::num const& right) -> eval_result {
+					// Perform operation on head.
+					auto head_result = bin_num_op(*left.head, right, op_name, op);
+					if (!head_result.has_value()) { return head_result; }
+					// Perform operation on tail.
+					auto tail_result = bin_num_op(*left.tail, right, op_name, std::forward<F>(op));
+					if (!tail_result.has_value()) { return tail_result; }
+					// Combine results.
+					return val::list{//
+						val::make_value(std::move(head_result.value())),
+						val::make_value(std::move(tail_result.value()))};
+				},
+				[&](val::num const& left, val::list const& right) -> eval_result {
+					// Perform operation on head.
+					auto head_result = bin_num_op(left, *right.head, op_name, op);
+					if (!head_result.has_value()) { return head_result; }
+					// Perform operation on tail.
+					auto tail_result = bin_num_op(left, *right.tail, op_name, std::forward<F>(op));
+					if (!tail_result.has_value()) { return tail_result; }
+					// Combine results.
+					return val::list{//
+						val::make_value(std::move(head_result.value())),
+						val::make_value(std::move(tail_result.value()))};
+				},
+				// Invalid
 				[&](auto const&, auto const&) -> eval_result {
 					return tl::unexpected{fmt::format(
 						"cannot perform {} with {} and {}", op_name, val::to_string(left), val::to_string(right))};
@@ -281,32 +311,22 @@ namespace gynjo {
 				});
 			},
 			[&](ast::add const& add) {
-				return eval_binary(env, *add.addend1, *add.addend2, [](val::value const& a, val::value const& b) -> eval_result {
-					return match2(
-						a,
-						b,
-						[&](val::num const& addend1, val::num const& addend2) -> eval_result {
-							return addend1 + addend2;
-						},
-						[](auto const& addend1, auto const& addend2) -> eval_result {
-							return tl::unexpected{
-								fmt::format("cannot add {} and {}", val::to_string(addend1), val::to_string(addend2))};
-						});
-				});
+				return eval_binary(
+					env, *add.addend1, *add.addend2, [](val::value const& addend1, val::value const& addend2) -> eval_result {
+						return bin_num_op(
+							addend1, addend2, "addition", [](val::num const& addend1, val::num const& addend2) -> eval_result {
+								return addend1 + addend2;
+							});
+					});
 			},
 			[&](ast::sub const& sub) {
-				return eval_binary(env, *sub.minuend, *sub.subtrahend, [](val::value const& a, val::value const& b) -> eval_result {
-					return match2(
-						a,
-						b,
-						[&](val::num const& minuend, val::num const& subtrahend) -> eval_result {
-							return minuend - subtrahend;
-						},
-						[](auto const& minuend, auto const& subtrahend) -> eval_result {
-							return tl::unexpected{fmt::format(
-								"cannot subtract {} from {}", val::to_string(subtrahend), val::to_string(minuend))};
-						});
-				});
+				return eval_binary(
+					env, *sub.minuend, *sub.subtrahend, [](val::value const& minuend, val::value const& subtrahend) -> eval_result {
+						return bin_num_op(
+							minuend, subtrahend, "subtraction", [](val::num const& minuend, val::num const& subtrahend) -> eval_result {
+								return minuend - subtrahend;
+							});
+					});
 			},
 			[&](ast::cluster const& cluster) -> eval_result {
 				std::vector<val::value> items;
