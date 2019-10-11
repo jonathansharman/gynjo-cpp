@@ -163,7 +163,8 @@ TEST_SUITE("interpreter") {
 	TEST_CASE("basic assignment") {
 		auto env = environment::make();
 		val::value const expected = val::num{42};
-		auto const actual = eval(env, "let x = 42");
+		eval(env, "let x = 42");
+		auto const actual = eval(env, "x");
 		CHECK(expected == actual.value());
 	}
 
@@ -319,6 +320,15 @@ TEST_SUITE("interpreter") {
 			"3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679"};
 		eval(env, "import constants");
 		auto const actual = eval(env, "PI");
+		CHECK(expected == actual.value());
+	}
+
+	TEST_CASE("for-loops") {
+		auto env = environment::make();
+		val::value const expected = val::num{"6"};
+		eval(env, "let a = 0");
+		eval(env, "for x in [1, 2, 3] do let a = a + x");
+		auto const actual = eval(env, "a");
 		CHECK(expected == actual.value());
 	}
 }

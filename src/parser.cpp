@@ -14,6 +14,7 @@ namespace gynjo {
 		using token_it = std::vector<tok::token>::const_iterator;
 		using subparse_result = tl::expected<std::pair<token_it, ast::node>, std::string>;
 
+		auto parse_statement(token_it begin, token_it end) -> subparse_result;
 		auto parse_expr(token_it begin, token_it end) -> subparse_result;
 
 		//! Parses a function body.
@@ -453,21 +454,52 @@ namespace gynjo {
 			return parse_conditional(begin, end).or_else([&](auto const&) { return parse_negation(begin, end); });
 		}
 
-		//! Parses an assignment operation.
+		//! Parses a for-loop, starting after "for".
+		auto parse_for_loop(token_it begin, token_it end) -> subparse_result {
+			if (begin == end) { return tl::unexpected{"expected for-loop"s}; }
+			// Parse loop variable.
+			return match(
+				*begin,
+				[&](tok::sym symbol) -> subparse_result {
+					auto const in_begin = begin + 1;
+					// Parse "in".
+					if (in_begin == end || !std::holds_alternative<tok::in>(*in_begin)) {
+						return tl::unexpected{"expected \"in\" in for-loop"s};
+					}
+					auto const range_begin = in_begin + 1;
+					// Parse range.
+					return parse_expr(range_begin, end).and_then([&](std::pair<token_it, ast::node> range_result) -> subparse_result {
+						auto range_end = range_result.first;
+						// Parse "do".
+						if (range_end == end || !std::holds_alternative<tok::do_>(*range_end)) {
+							return tl::unexpected{"expected \"do\" in for-loop"s};
+						}
+						auto const body_begin = range_end + 1;
+						// Parse body.
+						return parse_statement(body_begin, end).and_then([&](std::pair<token_it, ast::node> body_result) -> subparse_result {
+							// Assemble for-loop.
+							return std::pair{body_result.first,
+								ast::for_loop{//
+									symbol,
+									make_node(std::move(range_result.second)),
+									make_node(std::move(body_result.second))}};
+						});
+					});
+				},
+				[](auto const&) -> subparse_result { return tl::unexpected{"expected assignment symbol"s}; });
+		}
+
+		//! Parses an assignment operation, starting after "let".
 		auto parse_assignment(token_it begin, token_it end) -> subparse_result {
-			// Parse "let".
-			if (begin == end || !std::holds_alternative<tok::let>(*begin)) {
-				return tl::unexpected{"expected assignment"s};
-			}
-			auto const lhs_begin = begin + 1;
+			if (begin == end) { return tl::unexpected{"expected assignment"s}; }
 			// Parse LHS.
 			return match(
-				*lhs_begin,
+				*begin,
 				[&](tok::sym symbol) -> subparse_result {
-					auto const eq_begin = lhs_begin + 1;
+					auto const eq_begin = begin + 1;
 					// Parse "=".
 					if (eq_begin == end || !std::holds_alternative<tok::eq>(*(eq_begin))) {
-						return tl::unexpected{"expected '='"s};
+						return tl::unexpected{"expected \"=\" in assignment"s};
 					}
 					auto const rhs_begin = eq_begin + 1;
 					// Parse RHS.
@@ -477,37 +509,31 @@ namespace gynjo {
 						return std::pair{rhs_end, ast::assign{symbol, make_node(std::move(rhs))}};
 					});
 				},
-				// Otherwise, not a valid assignment
-				[](auto const&) -> subparse_result { return tl::unexpected{"expected symbol"s}; });
+				[&](auto const&) -> subparse_result {
+					return tl::unexpected{"expected loop variable after \"for\", found " + to_string(*begin)};
+				});
 		}
 
-		//! Parses an import statement.
+		//! Parses an import statement, starting after "import".
 		auto parse_import(token_it begin, token_it end) -> subparse_result {
-			if (begin == end) { return tl::unexpected{"expected import statement"s}; }
-			return match(
-				*begin,
-				// Imports start with "import".
-				[&](tok::imp) -> subparse_result {
-					auto filename_begin = begin + 1;
-					if (filename_begin != end && std::holds_alternative<tok::sym>(*filename_begin)) {
-						return std::pair{filename_begin + 1, ast::imp{std::get<tok::sym>(*filename_begin).name}};
-					} else {
-						return tl::unexpected{"expected filename"s};
-					}
-				},
-				[](auto const&) -> subparse_result { return tl::unexpected{"expected \"import\""s}; });
+			if (begin == end) { return tl::unexpected{"expected import target"s}; }
+			if (std::holds_alternative<tok::sym>(*begin)) {
+				return std::pair{begin + 1, ast::imp{std::get<tok::sym>(*begin).name}};
+			} else {
+				return tl::unexpected{"expected filename"s};
+			}
 		}
 
 		//! Parses a statement or expression.
 		auto parse_statement(token_it begin, token_it end) -> subparse_result {
 			// Empty input is a no-op.
 			if (begin == end) { return std::pair{end, ast::nop{}}; }
-			// Otherwise, try import...
-			return parse_import(begin, end)
-				// ...assignment...
-				.or_else([&](auto const&) { return parse_assignment(begin, end); })
-				// ...or expression.
-				.or_else([&](auto const&) { return parse_expr(begin, end); });
+			return match(
+				*begin,
+				[&](tok::imp) { return parse_import(begin + 1, end); },
+				[&](tok::let) { return parse_assignment(begin + 1, end); },
+				[&](tok::for_) { return parse_for_loop(begin + 1, end); },
+				[&](auto const&) { return parse_expr(begin, end); });
 		}
 
 		//! Parses all tokens from @p begin to @p end, checking that all input is used.

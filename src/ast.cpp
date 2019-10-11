@@ -4,55 +4,59 @@
 #include "ast.hpp"
 
 namespace gynjo::ast {
-	bool assign::operator==(assign const& that) const {
+	bool assign::operator==(assign const& that) const noexcept {
 		return symbol == that.symbol && *rhs == *that.rhs;
 	}
 
-	bool cond::operator==(cond const& that) const {
+	bool cond::operator==(cond const& that) const noexcept {
 		return *test == *that.test && *if_true == *that.if_true && *if_false == *that.if_false;
 	}
 
-	bool and_::operator==(and_ const& that) const {
+	bool for_loop::operator==(for_loop const& that) const noexcept {
+		return loop_var == that.loop_var && *range == *that.range && *body == *that.body;
+	}
+
+	bool and_::operator==(and_ const& that) const noexcept {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool or_::operator==(or_ const& that) const {
+	bool or_::operator==(or_ const& that) const noexcept {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool not_::operator==(not_ const& that) const {
+	bool not_::operator==(not_ const& that) const noexcept {
 		return *expr == *that.expr;
 	}
 
-	bool eq::operator==(eq const& that) const {
+	bool eq::operator==(eq const& that) const noexcept {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool neq::operator==(neq const& that) const {
+	bool neq::operator==(neq const& that) const noexcept {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool lt::operator==(lt const& that) const {
+	bool lt::operator==(lt const& that) const noexcept {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool leq::operator==(leq const& that) const {
+	bool leq::operator==(leq const& that) const noexcept {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool gt::operator==(gt const& that) const {
+	bool gt::operator==(gt const& that) const noexcept {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool geq::operator==(geq const& that) const {
+	bool geq::operator==(geq const& that) const noexcept {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool add::operator==(add const& that) const {
+	bool add::operator==(add const& that) const noexcept {
 		return *addend1 == *that.addend1 && *addend2 == *that.addend2;
 	}
 
-	bool sub::operator==(sub const& that) const {
+	bool sub::operator==(sub const& that) const noexcept {
 		return *minuend == *that.minuend && *subtrahend == *that.subtrahend;
 	}
 
@@ -69,7 +73,7 @@ namespace gynjo::ast {
 		return *this;
 	}
 
-	bool cluster::operator==(cluster const& that) const {
+	bool cluster::operator==(cluster const& that) const noexcept {
 		return items == that.items;
 	}
 
@@ -85,7 +89,7 @@ namespace gynjo::ast {
 		return *this;
 	}
 
-	bool tup::operator==(tup const& that) const {
+	bool tup::operator==(tup const& that) const noexcept {
 		return *elems == *that.elems;
 	}
 
@@ -101,7 +105,7 @@ namespace gynjo::ast {
 		return *this;
 	}
 
-	bool list::operator==(list const& that) const {
+	bool list::operator==(list const& that) const noexcept {
 		return *elems == *that.elems;
 	}
 
@@ -119,6 +123,12 @@ namespace gynjo::ast {
 			[](cond const& cond) {
 				return fmt::format(
 					"(if {} then {} else {})", to_string(*cond.test), to_string(*cond.if_true), to_string(*cond.if_false));
+			},
+			[](for_loop const& for_loop) {
+				return fmt::format("(for {} in {} do {})",
+					tok::to_string(for_loop.loop_var),
+					to_string(*for_loop.range),
+					to_string(*for_loop.body));
 			},
 			[](and_ const& and_) { return fmt::format("({} and {})", to_string(*and_.left), to_string(*and_.right)); },
 			[](or_ const& or_) { return fmt::format("({} or {})", to_string(*or_.left), to_string(*or_.right)); },

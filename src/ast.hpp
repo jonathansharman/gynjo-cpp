@@ -21,6 +21,7 @@ namespace gynjo::ast {
 		struct imp,
 		struct assign,
 		struct cond,
+		struct for_loop,
 		struct and_,
 		struct or_,
 		struct not_,
@@ -60,7 +61,7 @@ namespace gynjo::ast {
 		tok::sym symbol;
 		ptr rhs;
 
-		bool operator==(assign const& that) const;
+		bool operator==(assign const& that) const noexcept;
 	};
 
 	//! Conditional expression - if-then or if-then-else.
@@ -69,7 +70,16 @@ namespace gynjo::ast {
 		ptr if_true;
 		ptr if_false;
 
-		bool operator==(cond const& that) const;
+		bool operator==(cond const& that) const noexcept;
+	};
+
+	//! For-loop expression.
+	struct for_loop {
+		tok::sym loop_var;
+		ptr range;
+		ptr body;
+
+		bool operator==(for_loop const& that) const noexcept;
 	};
 
 	//! Logical AND expression.
@@ -77,7 +87,7 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		bool operator==(and_ const& that) const;
+		bool operator==(and_ const& that) const noexcept;
 	};
 
 	//! Logical OR expression.
@@ -85,14 +95,14 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		bool operator==(or_ const& that) const;
+		bool operator==(or_ const& that) const noexcept;
 	};
 
 	//! Logical NOT expression.
 	struct not_ {
 		ptr expr;
 
-		bool operator==(not_ const& that) const;
+		bool operator==(not_ const& that) const noexcept;
 	};
 
 	//! Less-than comparison expression.
@@ -100,7 +110,7 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		bool operator==(eq const& that) const;
+		bool operator==(eq const& that) const noexcept;
 	};
 
 	//! Less-than comparison expression.
@@ -108,7 +118,7 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		bool operator==(neq const& that) const;
+		bool operator==(neq const& that) const noexcept;
 	};
 
 	//! Less-than comparison expression.
@@ -116,7 +126,7 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		bool operator==(lt const& that) const;
+		bool operator==(lt const& that) const noexcept;
 	};
 
 	//! Less-than-or-equal comparison expression.
@@ -124,7 +134,7 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		bool operator==(leq const& that) const;
+		bool operator==(leq const& that) const noexcept;
 	};
 
 	//! Greater-than comparison expression.
@@ -132,7 +142,7 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		bool operator==(gt const& that) const;
+		bool operator==(gt const& that) const noexcept;
 	};
 
 	//! Greater-than-or-equal comparison expression.
@@ -140,7 +150,7 @@ namespace gynjo::ast {
 		ptr left;
 		ptr right;
 
-		bool operator==(geq const& that) const;
+		bool operator==(geq const& that) const noexcept;
 	};
 
 	//! Addition expression.
@@ -148,7 +158,7 @@ namespace gynjo::ast {
 		ptr addend1;
 		ptr addend2;
 
-		bool operator==(add const& that) const;
+		bool operator==(add const& that) const noexcept;
 	};
 
 	//! Binary subtraction expression.
@@ -156,7 +166,7 @@ namespace gynjo::ast {
 		ptr minuend;
 		ptr subtrahend;
 
-		bool operator==(sub const& that) const;
+		bool operator==(sub const& that) const noexcept;
 	};
 
 	//! A cluster of function calls, exponentiations, (possibly implicit) multiplications, and/or divisions.
@@ -191,7 +201,7 @@ namespace gynjo::ast {
 		cluster& operator=(cluster const& that);
 		cluster& operator=(cluster&&) noexcept = default;
 
-		bool operator==(cluster const& that) const;
+		bool operator==(cluster const& that) const noexcept;
 	};
 
 	//! Tuple expression.
@@ -207,7 +217,7 @@ namespace gynjo::ast {
 		tup& operator=(tup const& that);
 		tup& operator=(tup&&) noexcept = default;
 
-		bool operator==(tup const& that) const;
+		bool operator==(tup const& that) const noexcept;
 	};
 
 	template <typename... Args>
@@ -230,7 +240,7 @@ namespace gynjo::ast {
 		list& operator=(list const& that);
 		list& operator=(list&&) noexcept = default;
 
-		bool operator==(list const& that) const;
+		bool operator==(list const& that) const noexcept;
 	};
 
 	template <typename... Args>

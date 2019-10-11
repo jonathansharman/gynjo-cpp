@@ -21,11 +21,6 @@ using namespace std::string_literals;
 namespace gynjo {
 	namespace {
 		template <typename F>
-		auto eval_unary(environment::ptr const& env, ast::node const& expr, F&& f) -> eval_result {
-			return eval(env, expr).and_then([&](val::value const val) { return std::forward<F>(f)(val); });
-		}
-
-		template <typename F>
 		auto eval_binary(environment::ptr const& env, ast::node const& a, ast::node const& b, F&& f) -> eval_result {
 			return eval(env, a) //
 				.and_then([&](val::value const& a) { //
@@ -75,8 +70,8 @@ namespace gynjo {
 				},
 				// Invalid
 				[&](auto const&, auto const&) -> eval_result {
-					return tl::unexpected{fmt::format(
-						"cannot perform {} with {} and {}", op_name, val::to_string(left), val::to_string(right))};
+					return tl::unexpected{
+						fmt::format("cannot perform {} with {} and {}", op_name, to_string(left), to_string(right))};
 				});
 		}
 
@@ -144,7 +139,7 @@ namespace gynjo {
 			return match(
 				value,
 				[](val::num num) -> eval_result { return -num; },
-				[](auto const& value) -> eval_result { return tl::unexpected{"cannot negate " + val::to_string(value)}; });
+				[&](auto const&) -> eval_result { return tl::unexpected{"cannot negate " + to_string(value)}; });
 		}
 	}
 
@@ -172,7 +167,7 @@ namespace gynjo {
 					env->local_vars.emplace(assign.symbol.name, val::empty{});
 					// Now perform the actual assignment, overwriting whatever's there.
 					env->local_vars.insert_or_assign(assign.symbol.name, expr_value);
-					return expr_value;
+					return val::make_tup();
 				});
 			},
 			[&](ast::cond const& cond) {
@@ -186,9 +181,42 @@ namespace gynjo {
 								return eval(env, *cond.if_false);
 							}
 						},
-						[](auto const& v) -> eval_result {
+						[&](auto const&) -> eval_result {
 							return tl::unexpected{
-								fmt::format("expected boolean in conditional test, found {}", val::to_string(v))};
+								fmt::format("expected boolean in conditional test, found {}", to_string(test_value))};
+						});
+				});
+			},
+			[&](ast::for_loop const& loop) -> eval_result {
+				return eval(env, *loop.range).and_then([&](auto const& range) {
+					return match(
+						range,
+						[](val::empty) -> eval_result {
+							// Iterating over an empty list does and returns nothing.
+							return val::make_tup();
+						},
+						[&](val::list const& list) -> eval_result {
+							auto current = list;
+							for (;;) {
+								// Assign the loop variable to the current value in the range list.
+								env->local_vars[loop.loop_var.name] = *current.head;
+								// Evaluate the loop body in this context.
+								auto body_result = eval(env, *loop.body);
+								if (!body_result.has_value()) { return body_result; }
+								// Iterate.
+								if (std::holds_alternative<val::list>(*current.tail)) {
+									// Move to the next range element.
+									current = std::get<val::list>(*current.tail);
+								} else {
+									// End of the range.
+									break;
+								}
+							}
+							// For-loops evaluate to nothing.
+							return val::make_tup();
+						},
+						[&](auto const&) -> eval_result {
+							return tl::unexpected{fmt::format("expected a list, found {}", to_string(range))};
 						});
 				});
 			},
@@ -235,12 +263,12 @@ namespace gynjo {
 				return tok::boolean{left || right};
 			},
 			[&](ast::not_ const& not_) {
-				return eval_unary(env, *not_.expr, [](val::value const& val) -> eval_result {
+				return eval(env, *not_.expr).and_then([](val::value const& val) -> eval_result {
 					return match(
 						val,
 						[](tok::boolean b) -> eval_result { return tok::boolean{!b.value}; },
-						[](auto const& b) -> eval_result {
-							return tl::unexpected{fmt::format("cannot take logical negation of {}", val::to_string(b))};
+						[&](auto const&) -> eval_result {
+							return tl::unexpected{fmt::format("cannot take logical negation of {}", to_string(val))};
 						});
 				});
 			},
@@ -262,9 +290,8 @@ namespace gynjo {
 						[&](val::num const& left, val::num const& right) -> eval_result {
 							return tok::boolean{left < right};
 						},
-						[](auto const& left, auto const& right) -> eval_result {
-							return tl::unexpected{
-								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
+						[&](auto const&, auto const&) -> eval_result {
+							return tl::unexpected{fmt::format("cannot compare {} and {}", to_string(a), to_string(b))};
 						});
 				});
 			},
@@ -276,9 +303,8 @@ namespace gynjo {
 						[&](val::num const& left, val::num const& right) -> eval_result {
 							return tok::boolean{left <= right};
 						},
-						[](auto const& left, auto const& right) -> eval_result {
-							return tl::unexpected{
-								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
+						[&](auto const&, auto const&) -> eval_result {
+							return tl::unexpected{fmt::format("cannot compare {} and {}", to_string(a), to_string(b))};
 						});
 				});
 			},
@@ -290,9 +316,8 @@ namespace gynjo {
 						[&](val::num const& left, val::num const& right) -> eval_result {
 							return tok::boolean{left > right};
 						},
-						[](auto const& left, auto const& right) -> eval_result {
-							return tl::unexpected{
-								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
+						[&](auto const&, auto const&) -> eval_result {
+							return tl::unexpected{fmt::format("cannot compare {} and {}", to_string(a), to_string(b))};
 						});
 				});
 			},
@@ -304,9 +329,8 @@ namespace gynjo {
 						[&](val::num const& left, val::num const& right) -> eval_result {
 							return tok::boolean{left >= right};
 						},
-						[](auto const& left, auto const& right) -> eval_result {
-							return tl::unexpected{
-								fmt::format("cannot compare {} and {}", val::to_string(left), val::to_string(right))};
+						[&](auto const&, auto const&) -> eval_result {
+							return tl::unexpected{fmt::format("cannot compare {} and {}", to_string(a), to_string(b))};
 						});
 				});
 			},
@@ -536,9 +560,7 @@ namespace gynjo {
 
 	auto print(eval_result result) -> void {
 		if (result.has_value()) {
-			if (result.value() != val::value{val::make_tup()}) {
-				fmt::print("{}\n", gynjo::val::to_string(result.value()));
-			}
+			if (result.value() != val::value{val::make_tup()}) { fmt::print("{}\n", to_string(result.value())); }
 		} else {
 			fmt::print("{}\n", result.error());
 		}

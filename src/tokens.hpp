@@ -31,6 +31,18 @@ namespace gynjo::tok {
 	struct else_ {
 		auto operator<=>(else_ const&) const noexcept = default;
 	};
+	//! Token for "for" keyword.
+	struct for_ {
+		auto operator<=>(for_ const&) const noexcept = default;
+	};
+	//! Token for "in" keyword.
+	struct in {
+		auto operator<=>(in const&) const noexcept = default;
+	};
+	//! Token for "do" keyword.
+	struct do_ {
+		auto operator<=>(do_ const&) const noexcept = default;
+	};
 	//! Token for "and" keyword.
 	struct and_ {
 		auto operator<=>(and_ const&) const noexcept = default;
@@ -128,7 +140,7 @@ namespace gynjo::tok {
 
 	//! Union type of all valid tokens.
 	using token =
-		std::variant<imp, let, if_, then, else_, and_, or_, not_, eq, neq, lt, leq, gt, geq, plus, minus, mul, div, exp, lparen, rparen, lsquare, rsquare, com, arrow, boolean, num, sym, intrinsic>;
+		std::variant<imp, let, if_, then, else_, for_, in, do_, and_, or_, not_, eq, neq, lt, leq, gt, geq, plus, minus, mul, div, exp, lparen, rparen, lsquare, rsquare, com, arrow, boolean, num, sym, intrinsic>;
 
 	//! Converts the token @p tok to a user-readable string.
 	inline auto to_string(token tok) -> std::string {
@@ -140,6 +152,9 @@ namespace gynjo::tok {
 			[](if_ const&) { return "if"s; },
 			[](then const&) { return "then"s; },
 			[](else_ const&) { return "else"s; },
+			[](for_ const&) { return "for"s; },
+			[](in const&) { return "in"s; },
+			[](do_ const&) { return "do"s; },
 			[](and_ const&) { return "and"s; },
 			[](or_ const&) { return "or"s; },
 			[](not_ const&) { return "not"s; },
