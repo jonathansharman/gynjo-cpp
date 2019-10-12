@@ -66,6 +66,8 @@ TEST_SUITE("lexer") {
 			then{},
 			sym{"elses"},
 			else_{},
+			sym{"whiles"},
+			while_{},
 			sym{"fors"},
 			for_{},
 			sym{"ins"},
@@ -79,7 +81,7 @@ TEST_SUITE("lexer") {
 			sym{"nots"},
 			not_{}};
 		auto const actual = lex(
-			"imports import ifs if thens then elses else fors for ins in dos do ands and ors or nots not");
+			"imports import ifs if thens then elses else whiles while fors for ins in dos do ands and ors or nots not");
 		CHECK(expected == actual.value());
 	}
 }

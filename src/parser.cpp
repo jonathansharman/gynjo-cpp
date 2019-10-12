@@ -467,7 +467,7 @@ namespace gynjo {
 						return tl::unexpected{"expected \"in\" in for-loop"s};
 					}
 					auto const range_begin = in_begin + 1;
-					// Parse range.
+					// Parse range expression.
 					return parse_expr(range_begin, end).and_then([&](std::pair<token_it, ast::node> range_result) -> subparse_result {
 						auto range_end = range_result.first;
 						// Parse "do".
@@ -487,6 +487,28 @@ namespace gynjo {
 					});
 				},
 				[](auto const&) -> subparse_result { return tl::unexpected{"expected assignment symbol"s}; });
+		}
+
+		//! Parses a while-loop, starting after "while".
+		auto parse_while_loop(token_it begin, token_it end) -> subparse_result {
+			if (begin == end) { return tl::unexpected{"expected while-loop"s}; }
+			// Parse test expression.
+			return parse_expr(begin, end).and_then([&](std::pair<token_it, ast::node> test_result) -> subparse_result {
+				auto test_end = test_result.first;
+				// Parse "do".
+				if (test_end == end || !std::holds_alternative<tok::do_>(*test_end)) {
+					return tl::unexpected{"expected \"do\" in while-loop"s};
+				}
+				auto const body_begin = test_end + 1;
+				// Parse body.
+				return parse_statement(body_begin, end).and_then([&](std::pair<token_it, ast::node> body_result) -> subparse_result {
+					// Assemble while-loop.
+					return std::pair{body_result.first,
+						ast::while_loop{//
+							make_node(std::move(test_result.second)),
+							make_node(std::move(body_result.second))}};
+				});
+			});
 		}
 
 		//! Parses an assignment operation, starting after "let".
@@ -532,6 +554,7 @@ namespace gynjo {
 				*begin,
 				[&](tok::imp) { return parse_import(begin + 1, end); },
 				[&](tok::let) { return parse_assignment(begin + 1, end); },
+				[&](tok::while_) { return parse_while_loop(begin + 1, end); },
 				[&](tok::for_) { return parse_for_loop(begin + 1, end); },
 				[&](auto const&) { return parse_expr(begin, end); });
 		}

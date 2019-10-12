@@ -187,6 +187,28 @@ namespace gynjo {
 						});
 				});
 			},
+			[&](ast::while_loop const& loop) -> eval_result {
+				for (;;) {
+					// Evaluate the test condition.
+					auto test_result = eval(env, *loop.test);
+					// Check for error in the test expression.
+					if (!test_result.has_value()) { return test_result; }
+					// Check for non-boolean in the test expression.
+					if (!std::holds_alternative<tok::boolean>(test_result.value())) {
+						return tl::unexpected{"while-loop test must be boolean, found " + to_string(test_result.value())};
+					}
+					auto const test = std::get<tok::boolean>(test_result.value());
+					if (test.value) {
+						// Execute next iteration.
+						auto body_result = eval(env, *loop.body);
+						// Check for error in body.
+						if (!body_result.has_value()) { return body_result; }
+					} else {
+						// End of loop.
+						return val::make_tup();
+					}
+				}
+			},
 			[&](ast::for_loop const& loop) -> eval_result {
 				return eval(env, *loop.range).and_then([&](auto const& range) {
 					return match(

@@ -55,6 +55,7 @@ namespace gynjo {
 			{std::regex{R"...(if\b)...", flags}, [](sv) { return tok::if_{}; }},
 			{std::regex{R"...(then\b)...", flags}, [](sv) { return tok::then{}; }},
 			{std::regex{R"...(else\b)...", flags}, [](sv) { return tok::else_{}; }},
+			{std::regex{R"...(while\b)...", flags}, [](sv) { return tok::while_{}; }},
 			{std::regex{R"...(for\b)...", flags}, [](sv) { return tok::for_{}; }},
 			{std::regex{R"...(in\b)...", flags}, [](sv) { return tok::in{}; }},
 			{std::regex{R"...(do\b)...", flags}, [](sv) { return tok::do_{}; }},

@@ -21,6 +21,7 @@ namespace gynjo::ast {
 		struct imp,
 		struct assign,
 		struct cond,
+		struct while_loop,
 		struct for_loop,
 		struct and_,
 		struct or_,
@@ -71,6 +72,14 @@ namespace gynjo::ast {
 		ptr if_false;
 
 		bool operator==(cond const& that) const noexcept;
+	};
+
+	//! While-loop expression.
+	struct while_loop {
+		ptr test;
+		ptr body;
+
+		bool operator==(while_loop const& that) const noexcept;
 	};
 
 	//! For-loop expression.

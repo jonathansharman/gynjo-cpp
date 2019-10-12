@@ -31,6 +31,10 @@ namespace gynjo::tok {
 	struct else_ {
 		auto operator<=>(else_ const&) const noexcept = default;
 	};
+	//! Token for "while" keyword.
+	struct while_ {
+		auto operator<=>(while_ const&) const noexcept = default;
+	};
 	//! Token for "for" keyword.
 	struct for_ {
 		auto operator<=>(for_ const&) const noexcept = default;
@@ -139,8 +143,21 @@ namespace gynjo::tok {
 	};
 
 	//! Union type of all valid tokens.
-	using token =
-		std::variant<imp, let, if_, then, else_, for_, in, do_, and_, or_, not_, eq, neq, lt, leq, gt, geq, plus, minus, mul, div, exp, lparen, rparen, lsquare, rsquare, com, arrow, boolean, num, sym, intrinsic>;
+	using token = std::variant<
+		// clang-format off
+		imp,
+		let,
+		if_, then, else_, // branch
+		while_, for_, in, do_, // loop
+		and_, or_, not_, // boolean ops
+		eq, neq, lt, leq, gt, geq, // comparison ops
+		plus, minus, mul, div, exp, // arithmetic ops
+		lparen, rparen, lsquare, rsquare, // brackets
+		com,
+		arrow,
+		boolean, num, sym, intrinsic // values
+		// clang-format on
+		>;
 
 	//! Converts the token @p tok to a user-readable string.
 	inline auto to_string(token tok) -> std::string {
@@ -152,6 +169,7 @@ namespace gynjo::tok {
 			[](if_ const&) { return "if"s; },
 			[](then const&) { return "then"s; },
 			[](else_ const&) { return "else"s; },
+			[](while_ const&) { return "while"s; },
 			[](for_ const&) { return "for"s; },
 			[](in const&) { return "in"s; },
 			[](do_ const&) { return "do"s; },

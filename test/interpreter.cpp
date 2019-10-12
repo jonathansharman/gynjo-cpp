@@ -323,6 +323,15 @@ TEST_SUITE("interpreter") {
 		CHECK(expected == actual.value());
 	}
 
+	TEST_CASE("while-loops") {
+		auto env = environment::make();
+		val::value const expected = val::num{"3"};
+		eval(env, "let a = 0");
+		eval(env, "while a < 3 do let a = a + 1");
+		auto const actual = eval(env, "a");
+		CHECK(expected == actual.value());
+	}
+
 	TEST_CASE("for-loops") {
 		auto env = environment::make();
 		val::value const expected = val::num{"6"};

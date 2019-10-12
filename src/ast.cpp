@@ -12,6 +12,10 @@ namespace gynjo::ast {
 		return *test == *that.test && *if_true == *that.if_true && *if_false == *that.if_false;
 	}
 
+	bool while_loop::operator==(while_loop const& that) const noexcept {
+		return *test == *that.test && *body == *that.body;
+	}
+
 	bool for_loop::operator==(for_loop const& that) const noexcept {
 		return loop_var == that.loop_var && *range == *that.range && *body == *that.body;
 	}
@@ -123,6 +127,9 @@ namespace gynjo::ast {
 			[](cond const& cond) {
 				return fmt::format(
 					"(if {} then {} else {})", to_string(*cond.test), to_string(*cond.if_true), to_string(*cond.if_false));
+			},
+			[](while_loop const& while_loop) {
+				return fmt::format("(while {} do {})", to_string(*while_loop.test), to_string(*while_loop.body));
 			},
 			[](for_loop const& for_loop) {
 				return fmt::format("(for {} in {} do {})",
