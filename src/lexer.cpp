@@ -52,6 +52,7 @@ namespace gynjo {
 			{std::regex{R"...(top\b)...", flags}, [](sv) { return intrinsic::top; }},
 			{std::regex{R"...(pop\b)...", flags}, [](sv) { return intrinsic::pop; }},
 			{std::regex{R"...(push\b)...", flags}, [](sv) { return intrinsic::push; }},
+			{std::regex{R"...(print\b)...", flags}, [](sv) { return intrinsic::print; }},
 			// Keywords
 			{std::regex{R"...(import\b)...", flags}, [](sv) { return tok::imp{}; }},
 			{std::regex{R"...(let\b)...", flags}, [](sv) { return tok::let{}; }},

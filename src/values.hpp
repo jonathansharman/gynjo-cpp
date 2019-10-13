@@ -63,6 +63,8 @@ namespace gynjo {
 			//! Either another list or empty.
 			ptr tail;
 
+			~list() noexcept;
+
 			auto operator==(list const&) const noexcept -> bool;
 		};
 

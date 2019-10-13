@@ -128,6 +128,9 @@ namespace gynjo {
 									return tl::unexpected{
 										fmt::format("push() expected a list, found {}", val::to_string(arg))};
 								});
+						case intrinsic::print:
+							fmt::print("{}\n", to_string(*local_env->lookup("value")));
+							return val::make_tup();
 						default:
 							// unreachable
 							return tl::unexpected{"call to unknown intrinsic function"s};

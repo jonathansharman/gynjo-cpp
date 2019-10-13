@@ -150,6 +150,8 @@ namespace gynjo {
 								return ast::make_tup(tok::sym{"list"});
 							case intrinsic::push:
 								return ast::make_tup(tok::sym{"list"}, tok::sym{"value"});
+							case intrinsic::print:
+								return ast::make_tup(tok::sym{"value"});
 							default:
 								// unreachable
 								return ast::make_tup();

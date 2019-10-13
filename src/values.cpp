@@ -16,6 +16,12 @@ namespace gynjo::val {
 		return *elems == *that.elems;
 	}
 
+	list::~list() noexcept {
+		while (head && std::holds_alternative<val::list>(*head)) {
+			head = std::move(tail);
+		}
+	}
+
 	auto list::operator==(list const& that) const noexcept -> bool {
 		return *head == *that.head && *tail == *that.tail;
 	}
