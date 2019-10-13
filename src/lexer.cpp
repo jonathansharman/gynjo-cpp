@@ -40,7 +40,10 @@ namespace gynjo {
 			{std::regex{R"...(\))...", flags}, [](sv) { return tok::rparen{}; }},
 			{std::regex{R"...(\[)...", flags}, [](sv) { return tok::lsquare{}; }},
 			{std::regex{R"...(\])...", flags}, [](sv) { return tok::rsquare{}; }},
+			{std::regex{R"...(\{)...", flags}, [](sv) { return tok::lcurly{}; }},
+			{std::regex{R"...(\})...", flags}, [](sv) { return tok::rcurly{}; }},
 			{std::regex{R"...(,)...", flags}, [](sv) { return tok::com{}; }},
+			{std::regex{R"...(;)...", flags}, [](sv) { return tok::semicolon{}; }},
 			// Value literals
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)...", flags}, [](sv sv) { return tok::num{sv.data()}; }},
 			{std::regex{R"...(true\b)...", flags}, [](sv) { return tok::boolean{true}; }},

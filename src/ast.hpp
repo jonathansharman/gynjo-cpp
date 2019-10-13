@@ -21,6 +21,7 @@ namespace gynjo::ast {
 		struct imp,
 		struct assign,
 		struct cond,
+		struct block,
 		struct while_loop,
 		struct for_loop,
 		struct and_,
@@ -53,7 +54,6 @@ namespace gynjo::ast {
 	//! Import statement.
 	struct imp {
 		std::string filename;
-
 		bool operator==(imp const&) const noexcept = default;
 	};
 
@@ -61,7 +61,6 @@ namespace gynjo::ast {
 	struct assign {
 		tok::sym symbol;
 		ptr rhs;
-
 		bool operator==(assign const& that) const noexcept;
 	};
 
@@ -70,15 +69,28 @@ namespace gynjo::ast {
 		ptr test;
 		ptr if_true;
 		ptr if_false;
-
 		bool operator==(cond const& that) const noexcept;
+	};
+
+	//! Block expression.
+	struct block {
+		std::unique_ptr<std::vector<node>> stmts;
+
+		block();
+
+		block(block const& that);
+		block(block&&) noexcept = default;
+
+		block& operator=(block const& that);
+		block& operator=(block&&) noexcept = default;
+
+		bool operator==(block const& that) const noexcept;
 	};
 
 	//! While-loop expression.
 	struct while_loop {
 		ptr test;
 		ptr body;
-
 		bool operator==(while_loop const& that) const noexcept;
 	};
 
@@ -87,7 +99,6 @@ namespace gynjo::ast {
 		tok::sym loop_var;
 		ptr range;
 		ptr body;
-
 		bool operator==(for_loop const& that) const noexcept;
 	};
 
@@ -95,7 +106,6 @@ namespace gynjo::ast {
 	struct and_ {
 		ptr left;
 		ptr right;
-
 		bool operator==(and_ const& that) const noexcept;
 	};
 
@@ -103,14 +113,12 @@ namespace gynjo::ast {
 	struct or_ {
 		ptr left;
 		ptr right;
-
 		bool operator==(or_ const& that) const noexcept;
 	};
 
 	//! Logical NOT expression.
 	struct not_ {
 		ptr expr;
-
 		bool operator==(not_ const& that) const noexcept;
 	};
 
@@ -118,7 +126,6 @@ namespace gynjo::ast {
 	struct eq {
 		ptr left;
 		ptr right;
-
 		bool operator==(eq const& that) const noexcept;
 	};
 
@@ -126,7 +133,6 @@ namespace gynjo::ast {
 	struct neq {
 		ptr left;
 		ptr right;
-
 		bool operator==(neq const& that) const noexcept;
 	};
 
@@ -134,7 +140,6 @@ namespace gynjo::ast {
 	struct lt {
 		ptr left;
 		ptr right;
-
 		bool operator==(lt const& that) const noexcept;
 	};
 
@@ -142,7 +147,6 @@ namespace gynjo::ast {
 	struct leq {
 		ptr left;
 		ptr right;
-
 		bool operator==(leq const& that) const noexcept;
 	};
 
@@ -150,7 +154,6 @@ namespace gynjo::ast {
 	struct gt {
 		ptr left;
 		ptr right;
-
 		bool operator==(gt const& that) const noexcept;
 	};
 
@@ -158,7 +161,6 @@ namespace gynjo::ast {
 	struct geq {
 		ptr left;
 		ptr right;
-
 		bool operator==(geq const& that) const noexcept;
 	};
 
@@ -166,7 +168,6 @@ namespace gynjo::ast {
 	struct add {
 		ptr addend1;
 		ptr addend2;
-
 		bool operator==(add const& that) const noexcept;
 	};
 
@@ -174,7 +175,6 @@ namespace gynjo::ast {
 	struct sub {
 		ptr minuend;
 		ptr subtrahend;
-
 		bool operator==(sub const& that) const noexcept;
 	};
 
@@ -262,6 +262,7 @@ namespace gynjo::ast {
 	//! Lambda expression.
 	struct lambda {
 		ptr params;
+
 		//! The body of a lambda can be either a user-defined function or an intrinsic function.
 		std::variant<ptr, intrinsic> body;
 

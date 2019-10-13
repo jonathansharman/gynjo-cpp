@@ -323,6 +323,16 @@ TEST_SUITE("interpreter") {
 		CHECK(expected == actual.value());
 	}
 
+	TEST_CASE("blocks") {
+		auto env = environment::make();
+		val::value const expected = val::num{"1"};
+		eval(env, "{}");
+		eval(env, "{ let a = 0 }");
+		eval(env, "{ let b = { let a = a + 1; a} }");
+		auto const actual = eval(env, "b");
+		CHECK(expected == actual.value());
+	}
+
 	TEST_CASE("while-loops") {
 		auto env = environment::make();
 		val::value const expected = val::num{"3"};
@@ -337,7 +347,15 @@ TEST_SUITE("interpreter") {
 		val::value const expected = val::num{"6"};
 		eval(env, "let a = 0");
 		eval(env, "for x in [1, 2, 3] do let a = a + x");
+		eval(env, "for x in [] do let a = 10");
 		auto const actual = eval(env, "a");
 		CHECK(expected == actual.value());
+	}
+
+	TEST_CASE("unused results are not allowed") {
+		auto env = environment::make();
+		CHECK(!eval(env, "{1; 2}").has_value());
+		CHECK(!eval(env, "for x in [1, 2, 3] do 1").has_value());
+		CHECK(!eval(env, "while true do 1 = 2").has_value());
 	}
 }

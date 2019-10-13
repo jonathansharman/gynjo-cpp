@@ -187,6 +187,21 @@ namespace gynjo {
 						});
 				});
 			},
+			[&](ast::block const& block) -> eval_result {
+				// Empty blocks return nothing.
+				if (block.stmts->empty()) { return val::make_tup(); }
+				// Evaluate the first n - 1.
+				for (std::size_t i = 0; i < block.stmts->size() - 1; ++i) {
+					auto result = eval(env, (*block.stmts)[i]);
+					if (!result.has_value()) { return result; }
+					// Non-final block statements must return nothing.
+					if (result.value() != val::value{val::make_tup()}) {
+						return tl::unexpected{"unused non-final block statement result: " + to_string(result.value())};
+					}
+				}
+				// Overall result is the result of the final statement.
+				return eval(env, block.stmts->back());
+			},
 			[&](ast::while_loop const& loop) -> eval_result {
 				for (;;) {
 					// Evaluate the test condition.
@@ -203,6 +218,10 @@ namespace gynjo {
 						auto body_result = eval(env, *loop.body);
 						// Check for error in body.
 						if (!body_result.has_value()) { return body_result; }
+						// Body must evaluate to nothing.
+						if (body_result.value() != val::value{val::make_tup()}) {
+							return tl::unexpected{"unused result in body of while-loop: " + to_string(body_result.value())};
+						}
 					} else {
 						// End of loop.
 						return val::make_tup();
@@ -224,7 +243,13 @@ namespace gynjo {
 								env->local_vars[loop.loop_var.name] = *current.head;
 								// Evaluate the loop body in this context.
 								auto body_result = eval(env, *loop.body);
+								// Check for error in body.
 								if (!body_result.has_value()) { return body_result; }
+								// Body must evaluate to nothing.
+								if (body_result.value() != val::value{val::make_tup()}) {
+									return tl::unexpected{
+										"unused result in body of for-loop: " + to_string(body_result.value())};
+								}
 								// Iterate.
 								if (std::holds_alternative<val::list>(*current.tail)) {
 									// Move to the next range element.

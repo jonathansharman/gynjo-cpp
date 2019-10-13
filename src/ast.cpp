@@ -12,6 +12,21 @@ namespace gynjo::ast {
 		return *test == *that.test && *if_true == *that.if_true && *if_false == *that.if_false;
 	}
 
+	block::block() : stmts{std::make_unique<std::vector<node>>()} {}
+
+	block::block(block const& that) {
+		stmts = std::make_unique<std::vector<node>>(*that.stmts);
+	}
+
+	block& block::operator=(block const& that) {
+		stmts = std::make_unique<std::vector<node>>(*that.stmts);
+		return *this;
+	}
+
+	bool block::operator==(block const& that) const noexcept {
+		return *stmts == *that.stmts;
+	}
+
 	bool while_loop::operator==(while_loop const& that) const noexcept {
 		return *test == *that.test && *body == *that.body;
 	}
@@ -127,6 +142,17 @@ namespace gynjo::ast {
 			[](cond const& cond) {
 				return fmt::format(
 					"(if {} then {} else {})", to_string(*cond.test), to_string(*cond.if_true), to_string(*cond.if_false));
+			},
+			[](block const& block) {
+				std::string result = "{ ";
+				if (!block.stmts->empty()) {
+					result += to_string(block.stmts->front());
+					for (auto it = block.stmts->begin() + 1; it != block.stmts->end(); ++it) {
+						result += "; " + to_string(*it);
+					}
+				}
+				result += " }";
+				return result;
 			},
 			[](while_loop const& while_loop) {
 				return fmt::format("(while {} do {})", to_string(*while_loop.test), to_string(*while_loop.body));

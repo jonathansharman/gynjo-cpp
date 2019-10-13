@@ -14,7 +14,7 @@ namespace gynjo {
 		using token_it = std::vector<tok::token>::const_iterator;
 		using subparse_result = tl::expected<std::pair<token_it, ast::node>, std::string>;
 
-		auto parse_statement(token_it begin, token_it end) -> subparse_result;
+		auto parse_stmt(token_it begin, token_it end) -> subparse_result;
 		auto parse_expr(token_it begin, token_it end) -> subparse_result;
 
 		//! Parses a function body.
@@ -110,6 +110,35 @@ namespace gynjo {
 					}
 					++it;
 					return std::pair{it, std::move(list)};
+				},
+				// Block
+				[&](tok::lcurly const&) -> subparse_result {
+					ast::block block;
+					// Try to parse a statement.
+					auto first_result = parse_stmt(it, end);
+					if (first_result.has_value()) {
+						auto [first_end, first] = std::move(first_result.value());
+						it = first_end;
+						block.stmts->push_back(std::move(first));
+						// Try to parse additional comma-delimited expressions.
+						while (it != end && std::holds_alternative<tok::semicolon>(*it)) {
+							++it;
+							auto next_result = parse_stmt(it, end);
+							if (next_result.has_value()) {
+								auto [next_end, next] = std::move(next_result.value());
+								it = next_end;
+								block.stmts->push_back(std::move(next));
+							} else {
+								return tl::unexpected{"expected statement after ';'"s};
+							}
+						}
+					}
+					// Parse close curly brace.
+					if (it == end || !std::holds_alternative<tok::rcurly>(*it)) {
+						return tl::unexpected{"expected '}'"s};
+					}
+					++it;
+					return std::pair{it, std::move(block)};
 				},
 				// Intrinsic function
 				[&](intrinsic f) -> subparse_result {
@@ -476,7 +505,7 @@ namespace gynjo {
 						}
 						auto const body_begin = range_end + 1;
 						// Parse body.
-						return parse_statement(body_begin, end).and_then([&](std::pair<token_it, ast::node> body_result) -> subparse_result {
+						return parse_stmt(body_begin, end).and_then([&](std::pair<token_it, ast::node> body_result) -> subparse_result {
 							// Assemble for-loop.
 							return std::pair{body_result.first,
 								ast::for_loop{//
@@ -501,7 +530,7 @@ namespace gynjo {
 				}
 				auto const body_begin = test_end + 1;
 				// Parse body.
-				return parse_statement(body_begin, end).and_then([&](std::pair<token_it, ast::node> body_result) -> subparse_result {
+				return parse_stmt(body_begin, end).and_then([&](std::pair<token_it, ast::node> body_result) -> subparse_result {
 					// Assemble while-loop.
 					return std::pair{body_result.first,
 						ast::while_loop{//
@@ -547,7 +576,7 @@ namespace gynjo {
 		}
 
 		//! Parses a statement or expression.
-		auto parse_statement(token_it begin, token_it end) -> subparse_result {
+		auto parse_stmt(token_it begin, token_it end) -> subparse_result {
 			// Empty input is a no-op.
 			if (begin == end) { return std::pair{end, ast::nop{}}; }
 			return match(
@@ -561,7 +590,7 @@ namespace gynjo {
 
 		//! Parses all tokens from @p begin to @p end, checking that all input is used.
 		auto parse(token_it begin, token_it end) -> parse_result {
-			auto result = parse_statement(begin, end);
+			auto result = parse_stmt(begin, end);
 			if (result.has_value()) {
 				auto [expr_end, expr] = std::move(result.value());
 				if (expr_end != end) {

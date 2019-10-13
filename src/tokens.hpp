@@ -119,9 +119,21 @@ namespace gynjo::tok {
 	struct rsquare {
 		auto operator<=>(rsquare const&) const noexcept = default;
 	};
+	//! Token for "{".
+	struct lcurly {
+		auto operator<=>(lcurly const&) const noexcept = default;
+	};
+	//! Token for "}".
+	struct rcurly {
+		auto operator<=>(rcurly const&) const noexcept = default;
+	};
 	//! Token for ",".
 	struct com {
 		auto operator<=>(com const&) const noexcept = default;
+	};
+	//! Token for ";".
+	struct semicolon {
+		auto operator<=>(semicolon const&) const noexcept = default;
 	};
 	//! Token for "->".
 	struct arrow {
@@ -152,9 +164,8 @@ namespace gynjo::tok {
 		and_, or_, not_, // boolean ops
 		eq, neq, lt, leq, gt, geq, // comparison ops
 		plus, minus, mul, div, exp, // arithmetic ops
-		lparen, rparen, lsquare, rsquare, // brackets
-		com,
-		arrow,
+		lparen, rparen, lsquare, rsquare, lcurly, rcurly, // brackets
+		com, semicolon, arrow, // punctuation
 		boolean, num, sym, intrinsic // values
 		// clang-format on
 		>;
@@ -191,7 +202,10 @@ namespace gynjo::tok {
 			[](rparen const&) { return ")"s; },
 			[](lsquare const&) { return "["s; },
 			[](rsquare const&) { return "]"s; },
+			[](lcurly const&) { return "{"s; },
+			[](rcurly const&) { return "}"s; },
 			[](com const&) { return ","s; },
+			[](semicolon const&) { return ";"s; },
 			[](arrow const&) { return "->"s; },
 			[](boolean const& b) { return b.value ? "true"s : "false"s; },
 			[](num const& n) { return n.rep; },

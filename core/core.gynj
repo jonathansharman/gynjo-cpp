@@ -2,7 +2,7 @@ let abs = x -> if x < 0 then -x else x
 
 // Combinatorics
 
-let fact = n -> if n < 2 then 1 else n fact(n-1)
+let fact = n -> { let result = 1; while n > 1 do { let result = n*result; let n = n - 1 }; result }
 
 let nPk = (n, k) -> if k = 0 then 1 else n nPk(n-1, k-1)
 
@@ -13,7 +13,7 @@ let ctof = c -> 9c/5 + 32
 
 // List operations
 
-let len = list -> if list = [] then 0 else 1 + len(pop(list))
+let len = list -> { let result = 0; while list != [] do { let result = result + 1; let list = pop(list) }; result }
 
 let nth = (list, n) -> if n = 0 then top(list) else nth(pop(list), n-1)
 
@@ -32,3 +32,5 @@ let map = (list, f) -> if list = [] then [] else push(map(pop(list), f), f(top(l
 let reduce = (list, zero, f) -> if list = [] then zero else reduce(pop(list), f(zero, top(list)), f)
 
 let flatmap = (list, f) -> reduce(map(list, f), [], concat)
+
+let range = (start, end) -> { let result = []; while end >= start do { let result = push(result, end); let end = end - 1 }; result }

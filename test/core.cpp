@@ -87,5 +87,10 @@ TEST_SUITE("core libraries") {
 			auto const actual = eval(env, "flatmap([1, 2, 3], x -> [x, x])");
 			CHECK(expected == actual.value());
 		}
+		SUBCASE("range") {
+			val::value const expected = val::make_list(3, 2, 1);
+			auto const actual = eval(env, "range(1, 3)");
+			CHECK(expected == actual.value());
+		}
 	}
 }
