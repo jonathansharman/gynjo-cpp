@@ -449,15 +449,15 @@ namespace gynjo {
 				return tl::unexpected{"expected \"then\" in conditional expression"s};
 			}
 			++it;
-			// Parse expression if true.
-			auto true_result = parse_expr(it, end);
+			// Parse statement if true.
+			auto true_result = parse_stmt(it, end);
 			if (!true_result.has_value()) { return tl::unexpected{"expected true case in conditional expression"s}; }
 			it = true_result.value().first;
 			// Try to parse "else".
 			if (it != end && std::holds_alternative<tok::else_>(*it)) {
 				++it;
-				// Parse expression if false.
-				auto false_result = parse_expr(it, end);
+				// Parse statement if false.
+				auto false_result = parse_stmt(it, end);
 				if (!false_result.has_value()) {
 					return tl::unexpected{"expected false case in conditional expression"s};
 				}

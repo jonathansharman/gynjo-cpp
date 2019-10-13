@@ -62,14 +62,24 @@ TEST_SUITE("core libraries") {
 			auto const actual = eval(env, "concat([1, 2], [3, 4])");
 			CHECK(expected == actual.value());
 		}
-		SUBCASE("insert") {
+		SUBCASE("insert into non-empty") {
 			val::value const expected = val::make_list(3, 2, 1);
 			auto const actual = eval(env, "insert([1, 3], 1, 2)");
 			CHECK(expected == actual.value());
 		}
-		SUBCASE("remove") {
+		SUBCASE("insert into empty") {
+			val::value const expected = val::make_list(1);
+			auto const actual = eval(env, "insert([], 0, 1)");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("remove from middle") {
 			val::value const expected = val::make_list(3, 1);
 			auto const actual = eval(env, "remove([1, 2, 3], 1)");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("remove from beginning") {
+			val::value const expected = val::make_list(3, 2);
+			auto const actual = eval(env, "remove([1, 2, 3], 0)");
 			CHECK(expected == actual.value());
 		}
 		SUBCASE("map") {
