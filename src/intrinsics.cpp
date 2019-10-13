@@ -12,6 +12,8 @@ namespace gynjo {
 				return "pop";
 			case intrinsic::push:
 				return "push";
+			case intrinsic::print:
+				return "print";
 			default:
 				// unreachable
 				return "unknown";

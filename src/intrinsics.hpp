@@ -11,7 +11,9 @@ namespace gynjo {
 		// Fundamental list operations
 		top,
 		pop,
-		push
+		push,
+		// I/O
+		print
 	};
 
 	//! The user-readable name of intrinsic function @p f.

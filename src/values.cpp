@@ -12,11 +12,11 @@ namespace gynjo::val {
 
 	tup::tup(std::shared_ptr<std::vector<value>> elems) : elems{std::move(elems)} {}
 
-	bool tup::operator==(tup const& that) const noexcept {
+	auto tup::operator==(tup const& that) const noexcept -> bool {
 		return *elems == *that.elems;
 	}
 
-	bool list::operator==(list const& that) const noexcept {
+	auto list::operator==(list const& that) const noexcept -> bool {
 		return *head == *that.head && *tail == *that.tail;
 	}
 

@@ -31,7 +31,7 @@ namespace gynjo {
 			~closure();
 
 			//! Because of the halting problem, this just does shallow equality checking on lambda bodies.
-			bool operator==(closure const& other) const noexcept = default;
+			auto operator==(closure const&) const noexcept -> bool = default;
 		};
 
 		//! Tuple of Gynjo values.
@@ -41,7 +41,7 @@ namespace gynjo {
 			tup();
 			explicit tup(std::shared_ptr<std::vector<value>> elems);
 
-			bool operator==(tup const& that) const noexcept;
+			auto operator==(tup const&) const noexcept -> bool;
 		};
 
 		template <typename... Args>
@@ -53,7 +53,7 @@ namespace gynjo {
 
 		//! The empty Gynjo type.
 		struct empty {
-			bool operator==(empty const& that) const noexcept = default;
+			auto operator==(empty const&) const noexcept -> bool = default;
 		};
 
 		//! Functional list of Gynjo values.
@@ -63,7 +63,7 @@ namespace gynjo {
 			//! Either another list or empty.
 			ptr tail;
 
-			bool operator==(list const& that) const noexcept;
+			auto operator==(list const&) const noexcept -> bool;
 		};
 
 		//! Convenience function for creating a value pointer from @p value.

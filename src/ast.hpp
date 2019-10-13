@@ -48,20 +48,20 @@ namespace gynjo::ast {
 
 	//! No-op - statement that does nothing.
 	struct nop {
-		bool operator==(nop const&) const noexcept = default;
+		auto operator==(nop const&) const noexcept -> bool = default;
 	};
 
 	//! Import statement.
 	struct imp {
 		std::string filename;
-		bool operator==(imp const&) const noexcept = default;
+		auto operator==(imp const&) const noexcept -> bool = default;
 	};
 
 	//! Assignment statement.
 	struct assign {
 		tok::sym symbol;
 		ptr rhs;
-		bool operator==(assign const& that) const noexcept;
+		auto operator==(assign const&) const noexcept -> bool;
 	};
 
 	//! Conditional expression - if-then or if-then-else.
@@ -69,7 +69,7 @@ namespace gynjo::ast {
 		ptr test;
 		ptr if_true;
 		ptr if_false;
-		bool operator==(cond const& that) const noexcept;
+		auto operator==(cond const&) const noexcept -> bool;
 	};
 
 	//! Block expression.
@@ -81,17 +81,17 @@ namespace gynjo::ast {
 		block(block const& that);
 		block(block&&) noexcept = default;
 
-		block& operator=(block const& that);
-		block& operator=(block&&) noexcept = default;
+		auto operator=(block const& that) -> block&;
+		auto operator=(block&&) noexcept -> block& = default;
 
-		bool operator==(block const& that) const noexcept;
+		auto operator==(block const&) const noexcept -> bool;
 	};
 
 	//! While-loop expression.
 	struct while_loop {
 		ptr test;
 		ptr body;
-		bool operator==(while_loop const& that) const noexcept;
+		auto operator==(while_loop const&) const noexcept -> bool;
 	};
 
 	//! For-loop expression.
@@ -99,83 +99,83 @@ namespace gynjo::ast {
 		tok::sym loop_var;
 		ptr range;
 		ptr body;
-		bool operator==(for_loop const& that) const noexcept;
+		auto operator==(for_loop const&) const noexcept -> bool;
 	};
 
 	//! Logical AND expression.
 	struct and_ {
 		ptr left;
 		ptr right;
-		bool operator==(and_ const& that) const noexcept;
+		auto operator==(and_ const&) const noexcept -> bool;
 	};
 
 	//! Logical OR expression.
 	struct or_ {
 		ptr left;
 		ptr right;
-		bool operator==(or_ const& that) const noexcept;
+		auto operator==(or_ const&) const noexcept -> bool;
 	};
 
 	//! Logical NOT expression.
 	struct not_ {
 		ptr expr;
-		bool operator==(not_ const& that) const noexcept;
+		auto operator==(not_ const&) const noexcept -> bool;
 	};
 
 	//! Less-than comparison expression.
 	struct eq {
 		ptr left;
 		ptr right;
-		bool operator==(eq const& that) const noexcept;
+		auto operator==(eq const&) const noexcept -> bool;
 	};
 
 	//! Less-than comparison expression.
 	struct neq {
 		ptr left;
 		ptr right;
-		bool operator==(neq const& that) const noexcept;
+		auto operator==(neq const&) const noexcept -> bool;
 	};
 
 	//! Less-than comparison expression.
 	struct lt {
 		ptr left;
 		ptr right;
-		bool operator==(lt const& that) const noexcept;
+		auto operator==(lt const&) const noexcept -> bool;
 	};
 
 	//! Less-than-or-equal comparison expression.
 	struct leq {
 		ptr left;
 		ptr right;
-		bool operator==(leq const& that) const noexcept;
+		auto operator==(leq const&) const noexcept -> bool;
 	};
 
 	//! Greater-than comparison expression.
 	struct gt {
 		ptr left;
 		ptr right;
-		bool operator==(gt const& that) const noexcept;
+		auto operator==(gt const&) const noexcept -> bool;
 	};
 
 	//! Greater-than-or-equal comparison expression.
 	struct geq {
 		ptr left;
 		ptr right;
-		bool operator==(geq const& that) const noexcept;
+		auto operator==(geq const&) const noexcept -> bool;
 	};
 
 	//! Addition expression.
 	struct add {
 		ptr addend1;
 		ptr addend2;
-		bool operator==(add const& that) const noexcept;
+		auto operator==(add const&) const noexcept -> bool;
 	};
 
 	//! Binary subtraction expression.
 	struct sub {
 		ptr minuend;
 		ptr subtrahend;
-		bool operator==(sub const& that) const noexcept;
+		auto operator==(sub const&) const noexcept -> bool;
 	};
 
 	//! A cluster of function calls, exponentiations, (possibly implicit) multiplications, and/or divisions.
@@ -207,10 +207,10 @@ namespace gynjo::ast {
 		cluster(cluster const& that);
 		cluster(cluster&&) noexcept = default;
 
-		cluster& operator=(cluster const& that);
-		cluster& operator=(cluster&&) noexcept = default;
+		auto operator=(cluster const& that) -> cluster&;
+		auto operator=(cluster&&) noexcept -> cluster& = default;
 
-		bool operator==(cluster const& that) const noexcept;
+		auto operator==(cluster const&) const noexcept -> bool;
 	};
 
 	//! Tuple expression.
@@ -223,10 +223,10 @@ namespace gynjo::ast {
 		tup(tup const& that);
 		tup(tup&&) noexcept = default;
 
-		tup& operator=(tup const& that);
-		tup& operator=(tup&&) noexcept = default;
+		auto operator=(tup const& that) -> tup&;
+		auto operator=(tup&&) noexcept -> tup& = default;
 
-		bool operator==(tup const& that) const noexcept;
+		auto operator==(tup const&) const noexcept -> bool;
 	};
 
 	template <typename... Args>
@@ -246,10 +246,10 @@ namespace gynjo::ast {
 		list(list const& that);
 		list(list&&) noexcept = default;
 
-		list& operator=(list const& that);
-		list& operator=(list&&) noexcept = default;
+		auto operator=(list const& that) -> list&;
+		auto operator=(list&&) noexcept -> list& = default;
 
-		bool operator==(list const& that) const noexcept;
+		auto operator==(list const&) const noexcept -> bool;
 	};
 
 	template <typename... Args>
@@ -267,7 +267,7 @@ namespace gynjo::ast {
 		std::variant<ptr, intrinsic> body;
 
 		//! Only checks structural equality for the bodies (not functional equality) because of the halting problem.
-		bool operator==(lambda const& that) const noexcept;
+		auto operator==(lambda const&) const noexcept -> bool;
 	};
 
 	//! Convenience function for creating an AST node pointer from @p node.

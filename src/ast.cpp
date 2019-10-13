@@ -4,11 +4,11 @@
 #include "ast.hpp"
 
 namespace gynjo::ast {
-	bool assign::operator==(assign const& that) const noexcept {
+	auto assign::operator==(assign const& that) const noexcept -> bool {
 		return symbol == that.symbol && *rhs == *that.rhs;
 	}
 
-	bool cond::operator==(cond const& that) const noexcept {
+	auto cond::operator==(cond const& that) const noexcept -> bool {
 		return *test == *that.test && *if_true == *that.if_true && *if_false == *that.if_false;
 	}
 
@@ -18,64 +18,64 @@ namespace gynjo::ast {
 		stmts = std::make_unique<std::vector<node>>(*that.stmts);
 	}
 
-	block& block::operator=(block const& that) {
+	auto block::operator=(block const& that) -> block& {
 		stmts = std::make_unique<std::vector<node>>(*that.stmts);
 		return *this;
 	}
 
-	bool block::operator==(block const& that) const noexcept {
+	auto block::operator==(block const& that) const noexcept -> bool {
 		return *stmts == *that.stmts;
 	}
 
-	bool while_loop::operator==(while_loop const& that) const noexcept {
+	auto while_loop::operator==(while_loop const& that) const noexcept -> bool {
 		return *test == *that.test && *body == *that.body;
 	}
 
-	bool for_loop::operator==(for_loop const& that) const noexcept {
+	auto for_loop::operator==(for_loop const& that) const noexcept -> bool {
 		return loop_var == that.loop_var && *range == *that.range && *body == *that.body;
 	}
 
-	bool and_::operator==(and_ const& that) const noexcept {
+	auto and_::operator==(and_ const& that) const noexcept -> bool {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool or_::operator==(or_ const& that) const noexcept {
+	auto or_::operator==(or_ const& that) const noexcept -> bool {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool not_::operator==(not_ const& that) const noexcept {
+	auto not_::operator==(not_ const& that) const noexcept -> bool {
 		return *expr == *that.expr;
 	}
 
-	bool eq::operator==(eq const& that) const noexcept {
+	auto eq::operator==(eq const& that) const noexcept -> bool {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool neq::operator==(neq const& that) const noexcept {
+	auto neq::operator==(neq const& that) const noexcept -> bool {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool lt::operator==(lt const& that) const noexcept {
+	auto lt::operator==(lt const& that) const noexcept -> bool {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool leq::operator==(leq const& that) const noexcept {
+	auto leq::operator==(leq const& that) const noexcept -> bool {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool gt::operator==(gt const& that) const noexcept {
+	auto gt::operator==(gt const& that) const noexcept -> bool {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool geq::operator==(geq const& that) const noexcept {
+	auto geq::operator==(geq const& that) const noexcept -> bool {
 		return *left == *that.left && *right == *that.right;
 	}
 
-	bool add::operator==(add const& that) const noexcept {
+	auto add::operator==(add const& that) const noexcept -> bool {
 		return *addend1 == *that.addend1 && *addend2 == *that.addend2;
 	}
 
-	bool sub::operator==(sub const& that) const noexcept {
+	auto sub::operator==(sub const& that) const noexcept -> bool {
 		return *minuend == *that.minuend && *subtrahend == *that.subtrahend;
 	}
 
@@ -85,14 +85,14 @@ namespace gynjo::ast {
 	cluster::cluster(cluster const& that)
 		: negations{that.negations}, items{std::make_unique<std::vector<node>>(*that.items)}, connectors{that.connectors} {}
 
-	cluster& cluster::operator=(cluster const& that) {
+	auto cluster::operator=(cluster const& that) -> cluster& {
 		negations = that.negations;
 		items = std::make_unique<std::vector<node>>(*that.items);
 		connectors = that.connectors;
 		return *this;
 	}
 
-	bool cluster::operator==(cluster const& that) const noexcept {
+	auto cluster::operator==(cluster const& that) const noexcept -> bool {
 		return items == that.items;
 	}
 
@@ -103,12 +103,12 @@ namespace gynjo::ast {
 		elems = std::make_unique<std::vector<node>>(*that.elems);
 	}
 
-	tup& tup::operator=(tup const& that) {
+	auto tup::operator=(tup const& that) -> tup& {
 		elems = std::make_unique<std::vector<node>>(*that.elems);
 		return *this;
 	}
 
-	bool tup::operator==(tup const& that) const noexcept {
+	auto tup::operator==(tup const& that) const noexcept -> bool {
 		return *elems == *that.elems;
 	}
 
@@ -119,16 +119,16 @@ namespace gynjo::ast {
 		elems = std::make_unique<std::deque<node>>(*that.elems);
 	}
 
-	list& list::operator=(list const& that) {
+	auto list::operator=(list const& that) -> list& {
 		elems = std::make_unique<std::deque<node>>(*that.elems);
 		return *this;
 	}
 
-	bool list::operator==(list const& that) const noexcept {
+	auto list::operator==(list const& that) const noexcept -> bool {
 		return *elems == *that.elems;
 	}
 
-	bool lambda::operator==(lambda const& that) const noexcept {
+	auto lambda::operator==(lambda const& that) const noexcept -> bool {
 		return *params == *that.params && body == that.body;
 	}
 
