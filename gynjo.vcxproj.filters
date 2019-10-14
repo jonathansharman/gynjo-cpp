@@ -27,9 +27,6 @@
     <ClCompile Include="test\lexer.cpp">
       <Filter>test</Filter>
     </ClCompile>
-    <ClCompile Include="test\parser.cpp">
-      <Filter>test</Filter>
-    </ClCompile>
     <ClCompile Include="test\interpreter.cpp">
       <Filter>test</Filter>
     </ClCompile>

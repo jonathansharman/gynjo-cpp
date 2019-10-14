@@ -17,7 +17,10 @@ namespace gynjo {
 		using ptr = std::shared_ptr<environment>;
 
 		//! Convenience factory method for creating a new empty shared environment pointer.
-		static auto make() -> ptr;
+		static auto make_empty() -> ptr;
+
+		//! Convenience factory method for creating a new shared environment pointer with core libs loaded.
+		static auto make_with_core_libs() -> ptr;
 
 		//! Variables mappings created within the local scope.
 		std::unordered_map<std::string, val::value> local_vars;
@@ -31,7 +34,4 @@ namespace gynjo {
 		//! Returns the value of the variable with name @name or nullopt if the variable is undefined.
 		auto lookup(std::string const& name) -> std::optional<val::value> const;
 	};
-
-	//! Loads the core libraries into @p env.
-	auto load_core_libs(environment::ptr const& env) -> void;
 }

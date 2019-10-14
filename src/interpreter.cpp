@@ -149,39 +149,15 @@ namespace gynjo {
 	auto eval(environment::ptr const& env, ast::node const& node) -> eval_result {
 		return match(
 			node,
-			[](ast::nop) -> eval_result { return val::make_tup(); },
-			[&](ast::imp const& imp) -> eval_result {
-				std::ifstream fin{imp.filename + ".gynj"};
-				if (!fin.is_open()) {
-					return tl::unexpected{fmt::format("failed to load library \"{}\"", imp.filename)};
-				}
-				std::string line;
-				while (std::getline(fin, line)) {
-					auto line_result = eval(env, line);
-					if (!line_result.has_value()) {
-						return tl::unexpected{fmt::format("error in \"{}\": {}", imp.filename, line_result.error())};
-					}
-				}
-				return val::make_tup();
-			},
-			[&](ast::assign const& assign) {
-				return eval(env, *assign.rhs).and_then([&](val::value const& expr_value) -> eval_result {
-					// If the symbol is undefined, initialize it to empty. This allows recursive functions.
-					env->local_vars.emplace(assign.symbol.name, val::empty{});
-					// Now perform the actual assignment, overwriting whatever's there.
-					env->local_vars.insert_or_assign(assign.symbol.name, expr_value);
-					return val::make_tup();
-				});
-			},
 			[&](ast::cond const& cond) {
 				return eval(env, *cond.test).and_then([&](val::value const& test_value) -> eval_result {
 					return match(
 						test_value,
 						[&](tok::boolean test) -> eval_result {
 							if (test.value) {
-								return eval(env, *cond.if_true);
+								return eval(env, *cond.true_expr);
 							} else {
-								return eval(env, *cond.if_false);
+								return eval(env, *cond.false_expr);
 							}
 						},
 						[&](auto const&) -> eval_result {
@@ -191,84 +167,18 @@ namespace gynjo {
 				});
 			},
 			[&](ast::block const& block) -> eval_result {
-				// Empty blocks return nothing.
-				if (block.stmts->empty()) { return val::make_tup(); }
-				// Evaluate the first n - 1.
-				for (std::size_t i = 0; i < block.stmts->size() - 1; ++i) {
-					auto result = eval(env, (*block.stmts)[i]);
-					if (!result.has_value()) { return result; }
-					// Non-final block statements must return nothing.
-					if (result.value() != val::value{val::make_tup()}) {
-						return tl::unexpected{"unused non-final block statement result: " + to_string(result.value())};
+				for (ast::node const& stmt : (*block.stmts)) {
+					// A return statement exits the block early and produces a value.
+					if (std::holds_alternative<ast::ret>(stmt)) { return eval(env, *std::get<ast::ret>(stmt).expr); }
+					// Otherwise, just execute the statement.
+					auto stmt_result = exec(env, stmt);
+					// Check for error.
+					if (!stmt_result.has_value()) {
+						return tl::unexpected{"in block statement: " + stmt_result.error()};
 					}
 				}
-				// Overall result is the result of the final statement.
-				return eval(env, block.stmts->back());
-			},
-			[&](ast::while_loop const& loop) -> eval_result {
-				for (;;) {
-					// Evaluate the test condition.
-					auto test_result = eval(env, *loop.test);
-					// Check for error in the test expression.
-					if (!test_result.has_value()) { return test_result; }
-					// Check for non-boolean in the test expression.
-					if (!std::holds_alternative<tok::boolean>(test_result.value())) {
-						return tl::unexpected{"while-loop test must be boolean, found " + to_string(test_result.value())};
-					}
-					auto const test = std::get<tok::boolean>(test_result.value());
-					if (test.value) {
-						// Execute next iteration.
-						auto body_result = eval(env, *loop.body);
-						// Check for error in body.
-						if (!body_result.has_value()) { return body_result; }
-						// Body must evaluate to nothing.
-						if (body_result.value() != val::value{val::make_tup()}) {
-							return tl::unexpected{"unused result in body of while-loop: " + to_string(body_result.value())};
-						}
-					} else {
-						// End of loop.
-						return val::make_tup();
-					}
-				}
-			},
-			[&](ast::for_loop const& loop) -> eval_result {
-				return eval(env, *loop.range).and_then([&](auto const& range) {
-					return match(
-						range,
-						[](val::empty) -> eval_result {
-							// Iterating over an empty list does and returns nothing.
-							return val::make_tup();
-						},
-						[&](val::list const& list) -> eval_result {
-							auto current = list;
-							for (;;) {
-								// Assign the loop variable to the current value in the range list.
-								env->local_vars[loop.loop_var.name] = *current.head;
-								// Evaluate the loop body in this context.
-								auto body_result = eval(env, *loop.body);
-								// Check for error in body.
-								if (!body_result.has_value()) { return body_result; }
-								// Body must evaluate to nothing.
-								if (body_result.value() != val::value{val::make_tup()}) {
-									return tl::unexpected{
-										"unused result in body of for-loop: " + to_string(body_result.value())};
-								}
-								// Iterate.
-								if (std::holds_alternative<val::list>(*current.tail)) {
-									// Move to the next range element.
-									current = std::get<val::list>(*current.tail);
-								} else {
-									// End of the range.
-									break;
-								}
-							}
-							// For-loops evaluate to nothing.
-							return val::make_tup();
-						},
-						[&](auto const&) -> eval_result {
-							return tl::unexpected{fmt::format("expected a list, found {}", to_string(range))};
-						});
-				});
+				// Return nothing if there was no return statement.
+				return val::make_tup();
 			},
 			[&](ast::and_ const& and_) -> eval_result {
 				// Get left.
@@ -594,25 +504,154 @@ namespace gynjo {
 				} else {
 					return tl::unexpected{fmt::format("'{}' is undefined", sym.name)};
 				}
+			},
+			[&](auto const&) -> eval_result {
+				return tl::unexpected{"cannot evaluate imperative statement: " + to_string(node)};
 			});
 	}
 
 	auto eval(environment::ptr const& env, std::string const& input) -> eval_result {
 		// Lex.
 		lex_result const lex_result = lex(input);
-		if (!lex_result.has_value()) { return tl::unexpected{"Lex error: " + lex_result.error()}; }
+		if (!lex_result.has_value()) { return tl::unexpected{"(lex error) " + lex_result.error()}; }
+		auto tokens = std::move(lex_result.value());
 		// Parse.
-		parse_result const parse_result = parse(lex_result.value());
-		if (!parse_result.has_value()) { return tl::unexpected{"Parse error: " + parse_result.error()}; }
+		parse_result const parse_result = parse_expr(tokens.begin(), tokens.end());
+		if (!parse_result.has_value()) { return tl::unexpected{"(parse error) " + parse_result.error()}; }
+		auto const expr_end = parse_result.value().it;
+		if (expr_end != tokens.end()) {
+			return tl::unexpected{"(parse_error) unused tokens starting at " + to_string(*expr_end)};
+		}
 		// Evaluate.
-		return eval(env, parse_result.value());
+		return eval(env, parse_result.value().node);
 	}
 
-	auto print(eval_result result) -> void {
-		if (result.has_value()) {
-			if (result.value() != val::value{val::make_tup()}) { fmt::print("{}\n", to_string(result.value())); }
-		} else {
-			fmt::print("{}\n", result.error());
+	auto exec(environment::ptr const& env, ast::node const& node) -> exec_result {
+		return match(
+			node,
+			[](ast::nop) -> exec_result { return std::monostate(); },
+			[&](ast::imp const& imp) -> exec_result {
+				std::ifstream fin{imp.filename + ".gynj"};
+				if (!fin.is_open()) {
+					return tl::unexpected{fmt::format("failed to load library \"{}\"", imp.filename)};
+				}
+				std::stringstream ss;
+				ss << fin.rdbuf();
+				return exec(env, ss.str());
+			},
+			[&](ast::assign const& assign) -> exec_result {
+				auto rhs_result = eval(env, *assign.rhs);
+				// Check for error in RHS.
+				if (!rhs_result.has_value()) { return tl::unexpected{"in RHS of assignment: " + rhs_result.error()}; }
+				// If the symbol is undefined, initialize it to empty. This allows recursive functions.
+				env->local_vars.emplace(assign.symbol.name, val::empty{});
+				// Now perform the actual assignment, overwriting whatever's there.
+				env->local_vars.insert_or_assign(assign.symbol.name, std::move(rhs_result.value()));
+				return std::monostate{};
+			},
+			[&](ast::branch const& branch) -> exec_result {
+				auto test_result = eval(env, *branch.test);
+				if (!test_result.has_value()) {
+					return tl::unexpected{"in branch test expression: " + test_result.error()};
+				}
+				return match(
+					test_result.value(),
+					[&](tok::boolean test) -> exec_result {
+						if (test.value) {
+							return exec(env, *branch.true_stmt);
+						} else {
+							return exec(env, *branch.false_stmt);
+						}
+					},
+					[&](auto const&) -> exec_result {
+						return tl::unexpected{
+							fmt::format("expected boolean in conditional test, found {}", to_string(test_result.value()))};
+					});
+			},
+			[&](ast::while_loop const& loop) -> exec_result {
+				for (;;) {
+					// Evaluate the test condition.
+					auto test_result = eval(env, *loop.test);
+					// Check for error in the test expression.
+					if (!test_result.has_value()) {
+						return tl::unexpected{"in while-loop test expression: " + test_result.error()};
+					}
+					// Check for non-boolean in the test expression.
+					if (!std::holds_alternative<tok::boolean>(test_result.value())) {
+						return tl::unexpected{
+							"while-loop test value must be boolean, found " + to_string(test_result.value())};
+					}
+					auto const test = std::get<tok::boolean>(test_result.value());
+					if (test.value) {
+						// Execute next iteration.
+						auto body_result = exec(env, *loop.body);
+						// Check for error in body.
+						if (!body_result.has_value()) { return body_result; }
+					} else {
+						// End of loop.
+						return std::monostate{};
+					}
+				}
+			},
+			[&](ast::for_loop const& loop) -> exec_result {
+				auto range_result = eval(env, *loop.range);
+				if (!range_result.has_value()) { return tl::unexpected{range_result.error()}; }
+				return match(
+					range_result.value(),
+					[](val::empty) -> exec_result { return std::monostate{}; },
+					[&](val::list const& list) -> exec_result {
+						auto current = list;
+						for (;;) {
+							// Assign the loop variable to the current value in the range list.
+							env->local_vars[loop.loop_var.name] = *current.head;
+							// Execute the loop body in this context.
+							auto body_result = exec(env, *loop.body);
+							// Check for error in body.
+							if (!body_result.has_value()) {
+								return tl::unexpected{"in body of for-loop: " + body_result.error()};
+							}
+							// Iterate.
+							if (std::holds_alternative<val::list>(*current.tail)) {
+								// Move to the next range element.
+								current = std::get<val::list>(*current.tail);
+							} else {
+								// End of the range.
+								break;
+							}
+						}
+						return std::monostate{};
+					},
+					[&](auto const&) -> exec_result {
+						return tl::unexpected{fmt::format("expected a list, found {}", to_string(range_result.value()))};
+					});
+			},
+			[&](ast::ret const&) -> exec_result { return tl::unexpected{"cannot return outside statement block"s}; },
+			[&](auto const&) -> exec_result {
+				auto result = eval(env, node);
+				if (!result.has_value()) { return tl::unexpected{result.error()}; }
+				if (result.value() != val::value{val::make_tup()}) {
+					return tl::unexpected{"unused expression result: " + to_string(result.value())};
+				}
+				return std::monostate{};
+			});
+	}
+
+	auto exec(environment::ptr const& env, std::string const& input) -> exec_result {
+		// Lex.
+		lex_result const lex_result = lex(input);
+		if (!lex_result.has_value()) { return tl::unexpected{"(lex error) " + lex_result.error()}; }
+		// While there is still input left, parse and execute.
+		auto it = lex_result.value().begin();
+		auto end = lex_result.value().end();
+		while (it != end) {
+			// Parse.
+			parse_result const parse_result = parse_stmt(it, end);
+			if (!parse_result.has_value()) { return tl::unexpected{"(parse error) " + parse_result.error()}; }
+			it = parse_result.value().it;
+			// Execute.
+			auto exec_result = exec(env, parse_result.value().node);
+			if (!exec_result.has_value()) { return tl::unexpected{"(runtime error) " + exec_result.error()}; }
 		}
+		return std::monostate{};
 	}
 }

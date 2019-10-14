@@ -6,8 +6,23 @@
 #include "interpreter.hpp"
 
 namespace gynjo {
-	auto environment::make() -> ptr {
+	auto environment::make_empty() -> ptr {
 		return std::make_shared<environment>();
+	}
+
+	auto environment::make_with_core_libs() -> ptr {
+		static auto result = [] {
+			auto env = std::make_shared<environment>();
+			auto core_libs = {"constants", "core"};
+			for (auto const& lib : core_libs) {
+				auto import_result = exec(env, fmt::format("import {}", lib));
+				if (!import_result.has_value()) {
+					fmt::print("Error while importing {}: {}\n", lib, import_result.error());
+				}
+			}
+			return env;
+		}();
+		return result;
 	}
 
 	environment::environment(environment::ptr parent_env) : parent_env{std::move(parent_env)} {}
@@ -24,14 +39,5 @@ namespace gynjo {
 			// Not found.
 			return std::nullopt;
 		}
-	}
-
-	auto load_core_libs(environment::ptr const& env) -> void {
-		auto core_libs = {"constants", "core"};
-		for (auto const& lib : core_libs) {
-			fmt::print("Importing {}...\n", lib);
-			print(eval(env, fmt::format("import {}", lib)));
-		}
-		fmt::print("Ready!\n");
 	}
 }

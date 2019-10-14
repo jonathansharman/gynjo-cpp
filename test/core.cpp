@@ -11,15 +11,8 @@
 TEST_SUITE("core libraries") {
 	using namespace gynjo;
 
-	auto env = [] {
-		auto result = environment::make();
-#ifdef _DEBUG
-		load_core_libs(result);
-#endif
-		return result;
-	}();
-
 	TEST_CASE("basic math") {
+		auto env = environment::make_with_core_libs();
 		SUBCASE("absolute value") {
 			CHECK(val::value{val::num{5}} == eval(env, "abs 5").value());
 			CHECK(val::value{val::num{5}} == eval(env, "abs(-5)").value());
@@ -27,6 +20,7 @@ TEST_SUITE("core libraries") {
 	}
 
 	TEST_CASE("combinatorics") {
+		auto env = environment::make_with_core_libs();
 		SUBCASE("factorial") {
 			CHECK(val::value{val::num{120}} == eval(env, "fact 5").value());
 		}
@@ -39,6 +33,7 @@ TEST_SUITE("core libraries") {
 		}
 	}
 	TEST_CASE("list operations") {
+		auto env = environment::make_with_core_libs();
 		SUBCASE("len") {
 			CHECK(val::value{val::num{0}} == eval(env, "len []").value());
 			CHECK(val::value{val::num{3}} == eval(env, "len [1, 2, 3]").value());

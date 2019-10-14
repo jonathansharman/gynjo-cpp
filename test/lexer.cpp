@@ -45,8 +45,10 @@ TEST_SUITE("lexer") {
 			num{".1"},
 			num{"0"},
 			num{"0.1"},
-			com{}};
-		auto const actual = lex("let=!=<<=>>=*(+-->)[]^***/.1 0 0.1,");
+			com{},
+			que{},
+			colon{}};
+		auto const actual = lex("let=!=<<=>>=*(+-->)[]^***/.1 0 0.1,?:");
 		CHECK(expected == actual.value());
 	}
 
@@ -74,14 +76,28 @@ TEST_SUITE("lexer") {
 			in{},
 			sym{"dos"},
 			do_{},
+			sym{"returns"},
+			ret{},
 			sym{"ands"},
 			and_{},
 			sym{"ors"},
 			or_{},
 			sym{"nots"},
 			not_{}};
-		auto const actual = lex(
-			"imports import ifs if thens then elses else whiles while fors for ins in dos do ands and ors or nots not");
+		auto const actual = lex(R"(
+			imports import
+			ifs if
+			thens then
+			elses else
+			whiles while
+			fors for
+			ins in
+			dos do
+			returns return
+			ands and
+			ors or
+			nots not
+			)");
 		CHECK(expected == actual.value());
 	}
 }

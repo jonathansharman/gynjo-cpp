@@ -47,6 +47,10 @@ namespace gynjo::tok {
 	struct do_ {
 		auto operator<=>(do_ const&) const noexcept = default;
 	};
+	//! Token for "return" keyword.
+	struct ret {
+		auto operator<=>(ret const&) const noexcept = default;
+	};
 	//! Token for "and" keyword.
 	struct and_ {
 		auto operator<=>(and_ const&) const noexcept = default;
@@ -139,6 +143,14 @@ namespace gynjo::tok {
 	struct arrow {
 		auto operator<=>(arrow const&) const noexcept = default;
 	};
+	//! Token for "?".
+	struct que {
+		auto operator<=>(que const&) const noexcept = default;
+	};
+	//! Token for ":".
+	struct colon {
+		auto operator<=>(colon const&) const noexcept = default;
+	};
 	struct boolean {
 		bool value;
 		auto operator<=>(boolean const&) const noexcept = default;
@@ -160,12 +172,12 @@ namespace gynjo::tok {
 		imp,
 		let,
 		if_, then, else_, // branch
-		while_, for_, in, do_, // loop
+		while_, for_, in, do_, ret, // loops/blocks
 		and_, or_, not_, // boolean ops
 		eq, neq, lt, leq, gt, geq, // comparison ops
 		plus, minus, mul, div, exp, // arithmetic ops
 		lparen, rparen, lsquare, rsquare, lcurly, rcurly, // brackets
-		com, semicolon, arrow, // punctuation
+		com, semicolon, arrow, que, colon, // punctuation
 		boolean, num, sym, intrinsic // values
 		// clang-format on
 		>;
@@ -184,6 +196,7 @@ namespace gynjo::tok {
 			[](for_ const&) { return "for"s; },
 			[](in const&) { return "in"s; },
 			[](do_ const&) { return "do"s; },
+			[](ret const&) { return "return"s; },
 			[](and_ const&) { return "and"s; },
 			[](or_ const&) { return "or"s; },
 			[](not_ const&) { return "not"s; },
@@ -207,6 +220,8 @@ namespace gynjo::tok {
 			[](com const&) { return ","s; },
 			[](semicolon const&) { return ";"s; },
 			[](arrow const&) { return "->"s; },
+			[](que const&) { return "?"s; },
+			[](colon const&) { return ":"s; },
 			[](boolean const& b) { return b.value ? "true"s : "false"s; },
 			[](num const& n) { return n.rep; },
 			[](sym const& s) { return s.name; },

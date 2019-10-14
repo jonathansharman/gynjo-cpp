@@ -152,7 +152,6 @@
     <ClCompile Include="test\core.cpp" />
     <ClCompile Include="test\interpreter.cpp" />
     <ClCompile Include="test\lexer.cpp" />
-    <ClCompile Include="test\parser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ast.hpp" />

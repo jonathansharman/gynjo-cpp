@@ -10,15 +10,21 @@
 #include <tl/expected.hpp>
 
 namespace gynjo {
-	//! Either a Gynjo value or an error message.
+	//! Result of evaluation: either a Gynjo value or an error message.
 	using eval_result = tl::expected<val::value, std::string>;
 
-	//! Computes the value of the abstract syntax tree @p node in the context of @env, if possible.
+	//! Result of execution: either a @p std::monostate or an error message.
+	using exec_result = tl::expected<std::monostate, std::string>;
+
+	//! If possible, computes the value of the expression @p node in the context of @env.
 	auto eval(environment::ptr const& env, ast::node const& node) -> eval_result;
 
-	//! Computes the value of @p input in the context of @env, if possible.
+	//! If possible, computes the value of the expression contained in @p input in the context of @env.
 	auto eval(environment::ptr const& env, std::string const& input) -> eval_result;
 
-	//! Prints the results of an evaluation (if not empty) or the error message.
-	auto print(eval_result result) -> void;
+	//! If possible, executes the statements contained in the AST @p node in the context of @env.
+	auto exec(environment::ptr const& env, ast::node const& node) -> exec_result;
+
+	//! If possible, executes the statements contained in @p input in the context of @env.
+	auto exec(environment::ptr const& env, std::string const& input) -> exec_result;
 }

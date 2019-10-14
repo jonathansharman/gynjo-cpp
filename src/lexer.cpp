@@ -44,6 +44,8 @@ namespace gynjo {
 			{std::regex{R"...(\})...", flags}, [](sv) { return tok::rcurly{}; }},
 			{std::regex{R"...(,)...", flags}, [](sv) { return tok::com{}; }},
 			{std::regex{R"...(;)...", flags}, [](sv) { return tok::semicolon{}; }},
+			{std::regex{R"...(\?)...", flags}, [](sv) { return tok::que{}; }},
+			{std::regex{R"...(:)...", flags}, [](sv) { return tok::colon{}; }},
 			// Value literals
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)...", flags}, [](sv sv) { return tok::num{sv.data()}; }},
 			{std::regex{R"...(true\b)...", flags}, [](sv) { return tok::boolean{true}; }},
@@ -63,6 +65,7 @@ namespace gynjo {
 			{std::regex{R"...(for\b)...", flags}, [](sv) { return tok::for_{}; }},
 			{std::regex{R"...(in\b)...", flags}, [](sv) { return tok::in{}; }},
 			{std::regex{R"...(do\b)...", flags}, [](sv) { return tok::do_{}; }},
+			{std::regex{R"...(return\b)...", flags}, [](sv) { return tok::ret{}; }},
 			{std::regex{R"...(and\b)...", flags}, [](sv) { return tok::and_{}; }},
 			{std::regex{R"...(or\b)...", flags}, [](sv) { return tok::or_{}; }},
 			{std::regex{R"...(not\b)...", flags}, [](sv) { return tok::not_{}; }},

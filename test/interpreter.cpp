@@ -11,15 +11,14 @@
 TEST_SUITE("interpreter") {
 	using namespace gynjo;
 
-	TEST_CASE("empty statement") {
-		auto env = environment::make();
-		val::value const expected = val::make_tup();
-		auto const actual = eval(env, "");
-		CHECK(expected == actual.value());
+	TEST_CASE("execution of empty statement does nothing") {
+		auto env = environment::make_empty();
+		auto const actual = exec(env, "");
+		CHECK(std::monostate{} == actual.value());
 	}
 
 	TEST_CASE("logical operators") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const t = tok::boolean{true};
 		val::value const f = tok::boolean{false};
 		SUBCASE("and") {
@@ -55,7 +54,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("comparisons") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const t = tok::boolean{true};
 		val::value const f = tok::boolean{false};
 		SUBCASE("==") {
@@ -128,48 +127,43 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("conditional expressions") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		SUBCASE("true is lazy") {
 			val::value const expected = 1;
-			auto const actual = eval(env, "if false then 1/0 else 1");
+			auto const actual = eval(env, "false ? 1/0 : 1");
 			CHECK(expected == actual.value());
 		}
 		SUBCASE("false is lazy") {
 			val::value const expected = 1;
-			auto const actual = eval(env, "if true then 1 else 1/0");
-			CHECK(expected == actual.value());
-		}
-		SUBCASE("no else expression") {
-			val::value const expected = val::make_tup();
-			auto const actual = eval(env, "if false then 1");
+			auto const actual = eval(env, "true ? 1 : 1/0");
 			CHECK(expected == actual.value());
 		}
 	}
 
 	TEST_CASE("subtraction and negation") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{-1.25};
 		auto const actual = eval(env, "-1+-2^-2");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("simple compound with parentheses") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{5.0};
 		auto const actual = eval(env, "-5 *(1 +  -2)");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("basic assignment") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{42};
-		eval(env, "let x = 42");
+		exec(env, "let x = 42");
 		auto const actual = eval(env, "x");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("tuples") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		SUBCASE("singleton collapses into contained value") {
 			val::value const expected = val::num{1};
 			auto const actual = eval(env, "(1)");
@@ -188,7 +182,7 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("list construction") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		SUBCASE("singleton list") {
 			val::value const expected = val::make_list(val::num{1});
 			auto const actual = eval(env, "[1]");
@@ -206,8 +200,20 @@ TEST_SUITE("interpreter") {
 		}
 	}
 
+	TEST_CASE("list destruction does not cause stack overflow" * doctest::skip{}) {
+		auto env = environment::make_empty();
+		eval(env, R"(
+			let i = 0;
+			let l = [];
+			while i < 1000 do {
+				let l = push(l, i);
+				let i = i + 1;
+			};
+			)");
+	}
+
 	TEST_CASE("math operations on lists") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		SUBCASE("addition") {
 			val::value const expected = val::make_list(val::num{4}, val::num{3}, val::num{2});
 			auto const actual1 = eval(env, "[1, 2, 3] + 1");
@@ -249,16 +255,16 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("simple function application") {
-		auto env = environment::make();
-		eval(env, "let f = () -> 42");
+		auto env = environment::make_empty();
+		exec(env, "let f = () -> 42");
 		val::value const expected = val::num{42};
 		auto const actual = eval(env, "f()");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("order of operations") {
-		auto env = environment::make();
-		eval(env, "let inc = a -> a + 1");
+		auto env = environment::make_empty();
+		exec(env, "let inc = a -> a + 1");
 		SUBCASE("parenthesized function call before exponentiation") {
 			val::value const expected = val::num{36};
 			auto const actual = eval(env, "4inc(2)^2");
@@ -272,90 +278,113 @@ TEST_SUITE("interpreter") {
 	}
 
 	TEST_CASE("higher-order functions") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{42};
-		eval(env, "let apply = (f, a) -> f(a)");
+		exec(env, "let apply = (f, a) -> f(a)");
 		auto const actual = eval(env, "apply(a -> a, 42)");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("curried function") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{3};
-		eval(env, "let sum = a -> b -> a + b");
+		exec(env, "let sum = a -> b -> a + b");
 		auto const actual = eval(env, "sum 1 2");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("environment doesn't persist between function chains") {
-		auto env = environment::make();
-		eval(env, "let sum = a -> b -> a + b");
-		eval(env, "let get_a = () -> a");
+		auto env = environment::make_empty();
+		exec(env, R"(
+			let sum = a -> b -> a + b
+			let get_a = () -> a
+			)");
 		auto const result = eval(env, "sum (1) (2) get_a ()");
 		// a should be undefined.
 		CHECK(!result.has_value());
 	}
 
 	TEST_CASE("chained application with and without parentheses") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{3};
-		eval(env, "let sum = a -> b -> a + b");
-		eval(env, "let inc = a -> a + 1");
+		exec(env, R"(
+			let sum = a -> b -> a + b
+			let inc = a -> a + 1
+			)");
 		auto const actual = eval(env, "sum (1) 2");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("chained application does not pollute applications higher in the call chain") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{8};
-		eval(env, "let sum = a -> b -> a + b");
-		eval(env, "let inc = b -> b + 1");
+		exec(env, R"(
+			let sum = a -> b -> a + b
+			let inc = b -> b + 1
+			)");
 		auto const actual = eval(env, "sum (inc 5) 2");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("importing standard constants") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{
 			"3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679"};
-		eval(env, "import constants");
+		exec(env, "import constants");
 		auto const actual = eval(env, "PI");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("blocks") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{"1"};
 		eval(env, "{}");
 		eval(env, "{ let a = 0 }");
-		eval(env, "{ let b = { let a = a + 1; a} }");
+		eval(env, "{ let b = { let a = a + 1 return a } }");
 		auto const actual = eval(env, "b");
 		CHECK(expected == actual.value());
 	}
 
+	TEST_CASE("branch statements") {
+		auto env = environment::make_empty();
+		SUBCASE("true is lazy") {
+			val::value const expected = 1;
+			exec(env, "if false then let a = 1/0 else let a = 1");
+			auto const actual = eval(env, "a");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("false is lazy") {
+			val::value const expected = 1;
+			exec(env, "if true then let a = 1 else let a = 1/0");
+			auto const actual = eval(env, "a");
+			CHECK(expected == actual.value());
+		}
+		SUBCASE("no else statement") {
+			auto const actual = exec(env, "if false then let a = 1/0");
+			CHECK(std::monostate{} == actual.value());
+		}
+	}
+
 	TEST_CASE("while-loops") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{"3"};
-		eval(env, "let a = 0");
-		eval(env, "while a < 3 do let a = a + 1");
+		exec(env, R"(
+			let a = 0
+			while a < 3 do let a = a + 1
+			)");
 		auto const actual = eval(env, "a");
 		CHECK(expected == actual.value());
 	}
 
 	TEST_CASE("for-loops") {
-		auto env = environment::make();
+		auto env = environment::make_empty();
 		val::value const expected = val::num{"6"};
-		eval(env, "let a = 0");
-		eval(env, "for x in [1, 2, 3] do let a = a + x");
-		eval(env, "for x in [] do let a = 10");
+		exec(env, R"(
+			let a = 0
+			for x in [1, 2, 3] do let a = a + x
+			for x in [] do let a = 10
+			)");
 		auto const actual = eval(env, "a");
 		CHECK(expected == actual.value());
-	}
-
-	TEST_CASE("unused results are not allowed") {
-		auto env = environment::make();
-		CHECK(!eval(env, "{1; 2}").has_value());
-		CHECK(!eval(env, "for x in [1, 2, 3] do 1").has_value());
-		CHECK(!eval(env, "while true do 1 = 2").has_value());
 	}
 }

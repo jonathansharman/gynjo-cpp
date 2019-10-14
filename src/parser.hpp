@@ -13,9 +13,23 @@
 #include <vector>
 
 namespace gynjo {
-	//! Either an AST pointer or an error message.
-	using parse_result = tl::expected<ast::node, std::string>;
+	//! Constant iterator into a vector of tokens.
+	using token_it = std::vector<tok::token>::const_iterator;
 
-	//! Parses @p tokens into an AST in the context of @p env, if possible.
-	auto parse(std::vector<tok::token> tokens) -> parse_result;
+	//! An iterator to the next unused token along with a parsed AST node.
+	struct it_node {
+		token_it it;
+		ast::node node;
+	};
+
+	//! Either a (token iterator, AST node) pair or an error message.
+	using parse_result = tl::expected<it_node, std::string>;
+
+	//! If possible, parses the next single expression from @p begin to @p end.
+	//! @return An iterator to the next unused token along with the parsed AST node, or an error message.
+	auto parse_expr(token_it begin, token_it end) -> parse_result;
+
+	//! If possible, parses the next single statement from @p begin to @p end.
+	//! @return An iterator to the next unused token along with the parsed AST node, or an error message.
+	auto parse_stmt(token_it begin, token_it end) -> parse_result;
 }

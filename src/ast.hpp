@@ -16,14 +16,18 @@
 
 namespace gynjo::ast {
 	//! Union type of all AST node types.
-	using node = std::variant< //
+	using node = std::variant<
+		// Statements
 		struct nop,
 		struct imp,
 		struct assign,
-		struct cond,
-		struct block,
+		struct branch,
 		struct while_loop,
 		struct for_loop,
+		struct ret,
+		// Expressions
+		struct cond,
+		struct block,
 		struct and_,
 		struct or_,
 		struct not_,
@@ -64,11 +68,40 @@ namespace gynjo::ast {
 		auto operator==(assign const&) const noexcept -> bool;
 	};
 
-	//! Conditional expression - if-then or if-then-else.
+	//! Conditional branch - if-then or if-then-else.
+	struct branch {
+		ptr test;
+		ptr true_stmt;
+		ptr false_stmt;
+		auto operator==(branch const&) const noexcept -> bool;
+	};
+
+	//! While-loop statement.
+	struct while_loop {
+		ptr test;
+		ptr body;
+		auto operator==(while_loop const&) const noexcept -> bool;
+	};
+
+	//! For-loop statement.
+	struct for_loop {
+		tok::sym loop_var;
+		ptr range;
+		ptr body;
+		auto operator==(for_loop const&) const noexcept -> bool;
+	};
+
+	//! Return statement.
+	struct ret {
+		ptr expr;
+		auto operator==(ret const&) const noexcept -> bool;
+	};
+
+	//! Conditional expression.
 	struct cond {
 		ptr test;
-		ptr if_true;
-		ptr if_false;
+		ptr true_expr;
+		ptr false_expr;
 		auto operator==(cond const&) const noexcept -> bool;
 	};
 
@@ -85,21 +118,6 @@ namespace gynjo::ast {
 		auto operator=(block&&) noexcept -> block& = default;
 
 		auto operator==(block const&) const noexcept -> bool;
-	};
-
-	//! While-loop expression.
-	struct while_loop {
-		ptr test;
-		ptr body;
-		auto operator==(while_loop const&) const noexcept -> bool;
-	};
-
-	//! For-loop expression.
-	struct for_loop {
-		tok::sym loop_var;
-		ptr range;
-		ptr body;
-		auto operator==(for_loop const&) const noexcept -> bool;
 	};
 
 	//! Logical AND expression.

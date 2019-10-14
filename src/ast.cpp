@@ -8,15 +8,9 @@ namespace gynjo::ast {
 		return symbol == that.symbol && *rhs == *that.rhs;
 	}
 
-	auto cond::operator==(cond const& that) const noexcept -> bool {
-		return *test == *that.test && *if_true == *that.if_true && *if_false == *that.if_false;
-	}
-
 	block::block() : stmts{std::make_unique<std::vector<node>>()} {}
 
-	block::block(block const& that) {
-		stmts = std::make_unique<std::vector<node>>(*that.stmts);
-	}
+	block::block(block const& that) : stmts{std::make_unique<std::vector<node>>(*that.stmts)} {}
 
 	auto block::operator=(block const& that) -> block& {
 		stmts = std::make_unique<std::vector<node>>(*that.stmts);
@@ -27,12 +21,24 @@ namespace gynjo::ast {
 		return *stmts == *that.stmts;
 	}
 
+	auto branch::operator==(branch const& that) const noexcept -> bool {
+		return *test == *that.test && *true_stmt == *that.true_stmt && *false_stmt == *that.false_stmt;
+	}
+
 	auto while_loop::operator==(while_loop const& that) const noexcept -> bool {
 		return *test == *that.test && *body == *that.body;
 	}
 
 	auto for_loop::operator==(for_loop const& that) const noexcept -> bool {
 		return loop_var == that.loop_var && *range == *that.range && *body == *that.body;
+	}
+
+	auto ret::operator==(ret const& that) const noexcept -> bool {
+		return *expr == *that.expr;
+	}
+
+	auto cond::operator==(cond const& that) const noexcept -> bool {
+		return *test == *that.test && *true_expr == *that.true_expr && *false_expr == *that.false_expr;
 	}
 
 	auto and_::operator==(and_ const& that) const noexcept -> bool {
@@ -138,10 +144,26 @@ namespace gynjo::ast {
 			node,
 			[](nop) { return "no-op"s; },
 			[](imp const& imp) { return "import " + imp.filename; },
-			[](assign const& assign) { return ast::to_string(assign.symbol) + " = " + to_string(*assign.rhs); },
+			[](assign const& assign) {
+				return fmt::format("let {} = {}", ast::to_string(assign.symbol), to_string(*assign.rhs));
+			},
+			[](branch const& branch) {
+				return fmt::format(
+					"if {} then {} else {}", to_string(*branch.test), to_string(*branch.true_stmt), to_string(*branch.false_stmt));
+			},
+			[](while_loop const& while_loop) {
+				return fmt::format("while {} do {}", to_string(*while_loop.test), to_string(*while_loop.body));
+			},
+			[](for_loop const& for_loop) {
+				return fmt::format("for {} in {} do {}",
+					tok::to_string(for_loop.loop_var),
+					to_string(*for_loop.range),
+					to_string(*for_loop.body));
+			},
+			[](ret const& ret) { return fmt::format("return {}", to_string(*ret.expr)); },
 			[](cond const& cond) {
 				return fmt::format(
-					"(if {} then {} else {})", to_string(*cond.test), to_string(*cond.if_true), to_string(*cond.if_false));
+					"({} ? {} : {})", to_string(*cond.test), to_string(*cond.true_expr), to_string(*cond.false_expr));
 			},
 			[](block const& block) {
 				std::string result = "{ ";
@@ -153,15 +175,6 @@ namespace gynjo::ast {
 				}
 				result += " }";
 				return result;
-			},
-			[](while_loop const& while_loop) {
-				return fmt::format("(while {} do {})", to_string(*while_loop.test), to_string(*while_loop.body));
-			},
-			[](for_loop const& for_loop) {
-				return fmt::format("(for {} in {} do {})",
-					tok::to_string(for_loop.loop_var),
-					to_string(*for_loop.range),
-					to_string(*for_loop.body));
 			},
 			[](and_ const& and_) { return fmt::format("({} and {})", to_string(*and_.left), to_string(*and_.right)); },
 			[](or_ const& or_) { return fmt::format("({} or {})", to_string(*or_.left), to_string(*or_.right)); },

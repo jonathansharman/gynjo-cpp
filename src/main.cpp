@@ -28,15 +28,13 @@ auto main(int argc, char* argv[]) -> int {
 
 	using namespace gynjo;
 
-	// Load core libraries.
-	auto env = environment::make();
-	load_core_libs(env);
-
-	// REPL.
+	auto env = environment::make_with_core_libs();
+	std::string line;
 	for (;;) {
 		std::cout << ">> ";
-		std::string line;
 		std::getline(std::cin, line);
-		print(eval(env, line));
+		auto exec_result = exec(env, line);
+		// auto exec_result = exec(env, fmt::format("print({});", line));
+		if (!exec_result.has_value()) { fmt::print("{}\n", exec_result.error()); }
 	}
 }
