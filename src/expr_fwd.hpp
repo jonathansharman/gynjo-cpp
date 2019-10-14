@@ -3,6 +3,10 @@
 
 #pragma once
 
+#include <memory>
+
 namespace gynjo {
-	struct environment;
+	struct expr;
+
+	using expr_ptr = std::shared_ptr<expr>;
 }

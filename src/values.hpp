@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ast.hpp"
 #include "environment_fwd.hpp"
+#include "expr.hpp"
 #include "tokens.hpp"
 #include "visitation.hpp"
 
@@ -25,7 +25,7 @@ namespace gynjo {
 
 		//! A lambda along with the environment in which it was called.
 		struct closure {
-			ast::lambda f;
+			lambda f;
 			std::shared_ptr<environment> env;
 
 			~closure();

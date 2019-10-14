@@ -3,6 +3,10 @@
 
 #pragma once
 
+#include <memory>
+
 namespace gynjo {
-	struct environment;
+	struct stmt;
+
+	using stmt_ptr = std::shared_ptr<stmt>;
 }

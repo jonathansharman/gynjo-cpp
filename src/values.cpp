@@ -55,6 +55,6 @@ namespace gynjo::val {
 				result += "]";
 				return result;
 			},
-			[](closure const& c) { return ast::to_string(c.f); });
+			[](closure const& c) { return to_string(expr{c.f}); });
 	}
 }

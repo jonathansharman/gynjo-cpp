@@ -1,40 +1,24 @@
 //! @file
 //! @copyright See <a href="LICENSE.txt">LICENSE.txt</a>.
 
-#include "ast.hpp"
+#include "expr.hpp"
 
-namespace gynjo::ast {
-	auto assign::operator==(assign const& that) const noexcept -> bool {
-		return symbol == that.symbol && *rhs == *that.rhs;
-	}
+#include "stmt.hpp"
 
-	block::block() : stmts{std::make_unique<std::vector<node>>()} {}
+namespace gynjo {
+	block::block() : stmts{std::make_unique<std::vector<stmt>>()} {}
 
-	block::block(block const& that) : stmts{std::make_unique<std::vector<node>>(*that.stmts)} {}
+	block::block(block const& that) : stmts{std::make_unique<std::vector<stmt>>(*that.stmts)} {}
+
+	block::~block() = default;
 
 	auto block::operator=(block const& that) -> block& {
-		stmts = std::make_unique<std::vector<node>>(*that.stmts);
+		stmts = std::make_unique<std::vector<stmt>>(*that.stmts);
 		return *this;
 	}
 
 	auto block::operator==(block const& that) const noexcept -> bool {
 		return *stmts == *that.stmts;
-	}
-
-	auto branch::operator==(branch const& that) const noexcept -> bool {
-		return *test == *that.test && *true_stmt == *that.true_stmt && *false_stmt == *that.false_stmt;
-	}
-
-	auto while_loop::operator==(while_loop const& that) const noexcept -> bool {
-		return *test == *that.test && *body == *that.body;
-	}
-
-	auto for_loop::operator==(for_loop const& that) const noexcept -> bool {
-		return loop_var == that.loop_var && *range == *that.range && *body == *that.body;
-	}
-
-	auto ret::operator==(ret const& that) const noexcept -> bool {
-		return *expr == *that.expr;
 	}
 
 	auto cond::operator==(cond const& that) const noexcept -> bool {
@@ -85,15 +69,15 @@ namespace gynjo::ast {
 		return *minuend == *that.minuend && *subtrahend == *that.subtrahend;
 	}
 
-	cluster::cluster(std::vector<bool> negations, std::unique_ptr<std::vector<node>> items, std::vector<connector> connectors)
+	cluster::cluster(std::vector<bool> negations, std::unique_ptr<std::vector<expr>> items, std::vector<connector> connectors)
 		: negations{std::move(negations)}, items{std::move(items)}, connectors{std::move(connectors)} {}
 
 	cluster::cluster(cluster const& that)
-		: negations{that.negations}, items{std::make_unique<std::vector<node>>(*that.items)}, connectors{that.connectors} {}
+		: negations{that.negations}, items{std::make_unique<std::vector<expr>>(*that.items)}, connectors{that.connectors} {}
 
 	auto cluster::operator=(cluster const& that) -> cluster& {
 		negations = that.negations;
-		items = std::make_unique<std::vector<node>>(*that.items);
+		items = std::make_unique<std::vector<expr>>(*that.items);
 		connectors = that.connectors;
 		return *this;
 	}
@@ -102,35 +86,35 @@ namespace gynjo::ast {
 		return items == that.items;
 	}
 
-	tup::tup() : elems{std::make_unique<std::vector<node>>()} {}
-	tup::tup(std::unique_ptr<std::vector<node>> elems) : elems{std::move(elems)} {}
+	tup_expr::tup_expr() : elems{std::make_unique<std::vector<expr>>()} {}
+	tup_expr::tup_expr(std::unique_ptr<std::vector<expr>> elems) : elems{std::move(elems)} {}
 
-	tup::tup(tup const& that) {
-		elems = std::make_unique<std::vector<node>>(*that.elems);
+	tup_expr::tup_expr(tup_expr const& that) {
+		elems = std::make_unique<std::vector<expr>>(*that.elems);
 	}
 
-	auto tup::operator=(tup const& that) -> tup& {
-		elems = std::make_unique<std::vector<node>>(*that.elems);
+	auto tup_expr::operator=(tup_expr const& that) -> tup_expr& {
+		elems = std::make_unique<std::vector<expr>>(*that.elems);
 		return *this;
 	}
 
-	auto tup::operator==(tup const& that) const noexcept -> bool {
+	auto tup_expr::operator==(tup_expr const& that) const noexcept -> bool {
 		return *elems == *that.elems;
 	}
 
-	list::list() : elems{std::make_unique<std::deque<node>>()} {}
-	list::list(std::unique_ptr<std::deque<node>> elems) : elems{std::move(elems)} {}
+	list_expr::list_expr() : elems{std::make_unique<std::deque<expr>>()} {}
+	list_expr::list_expr(std::unique_ptr<std::deque<expr>> elems) : elems{std::move(elems)} {}
 
-	list::list(list const& that) {
-		elems = std::make_unique<std::deque<node>>(*that.elems);
+	list_expr::list_expr(list_expr const& that) {
+		elems = std::make_unique<std::deque<expr>>(*that.elems);
 	}
 
-	auto list::operator=(list const& that) -> list& {
-		elems = std::make_unique<std::deque<node>>(*that.elems);
+	auto list_expr::operator=(list_expr const& that) -> list_expr& {
+		elems = std::make_unique<std::deque<expr>>(*that.elems);
 		return *this;
 	}
 
-	auto list::operator==(list const& that) const noexcept -> bool {
+	auto list_expr::operator==(list_expr const& that) const noexcept -> bool {
 		return *elems == *that.elems;
 	}
 
@@ -138,29 +122,10 @@ namespace gynjo::ast {
 		return *params == *that.params && body == that.body;
 	}
 
-	auto to_string(node const& node) -> std::string {
+	auto to_string(expr const& expr) -> std::string {
 		using namespace std::string_literals;
 		return match(
-			node,
-			[](nop) { return "no-op"s; },
-			[](imp const& imp) { return "import " + imp.filename; },
-			[](assign const& assign) {
-				return fmt::format("let {} = {}", ast::to_string(assign.symbol), to_string(*assign.rhs));
-			},
-			[](branch const& branch) {
-				return fmt::format(
-					"if {} then {} else {}", to_string(*branch.test), to_string(*branch.true_stmt), to_string(*branch.false_stmt));
-			},
-			[](while_loop const& while_loop) {
-				return fmt::format("while {} do {}", to_string(*while_loop.test), to_string(*while_loop.body));
-			},
-			[](for_loop const& for_loop) {
-				return fmt::format("for {} in {} do {}",
-					tok::to_string(for_loop.loop_var),
-					to_string(*for_loop.range),
-					to_string(*for_loop.body));
-			},
-			[](ret const& ret) { return fmt::format("return {}", to_string(*ret.expr)); },
+			expr.value,
 			[](cond const& cond) {
 				return fmt::format(
 					"({} ? {} : {})", to_string(*cond.test), to_string(*cond.true_expr), to_string(*cond.false_expr));
@@ -218,11 +183,13 @@ namespace gynjo::ast {
 			[](lambda const& f) {
 				return match(
 					f.body,
-					[&](ptr const& body) { return fmt::format("({} -> {})", to_string(*f.params), to_string(*body)); },
+					[&](expr_ptr const& body) {
+						return fmt::format("({} -> {})", to_string(*f.params), to_string(*body));
+					},
 					[](intrinsic body) { return name(body); });
 			},
 			[](intrinsic const& f) { return name(f); },
-			[](tup const& tup) {
+			[](tup_expr const& tup) {
 				std::string result = "(";
 				if (!tup.elems->empty()) {
 					result += to_string(tup.elems->front());
@@ -233,7 +200,7 @@ namespace gynjo::ast {
 				result += ")";
 				return result;
 			},
-			[](list const& list) {
+			[](list_expr const& list) {
 				std::string result = "[";
 				if (!list.elems->empty()) {
 					result += to_string(list.elems->front());

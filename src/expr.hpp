@@ -3,7 +3,10 @@
 
 #pragma once
 
+#include "expr_fwd.hpp"
+
 #include "intrinsics.hpp"
+#include "stmt_fwd.hpp"
 #include "tokens.hpp"
 #include "visitation.hpp"
 
@@ -14,105 +17,25 @@
 #include <string>
 #include <vector>
 
-namespace gynjo::ast {
-	//! Union type of all AST node types.
-	using node = std::variant<
-		// Statements
-		struct nop,
-		struct imp,
-		struct assign,
-		struct branch,
-		struct while_loop,
-		struct for_loop,
-		struct ret,
-		// Expressions
-		struct cond,
-		struct block,
-		struct and_,
-		struct or_,
-		struct not_,
-		struct eq,
-		struct neq,
-		struct lt,
-		struct leq,
-		struct gt,
-		struct geq,
-		struct add,
-		struct sub,
-		struct cluster,
-		struct lambda,
-		struct tup,
-		struct list,
-		tok::boolean,
-		tok::num,
-		tok::sym>;
-
-	//! Shared pointer to an AST node.
-	using ptr = std::shared_ptr<node>;
-
-	//! No-op - statement that does nothing.
-	struct nop {
-		auto operator==(nop const&) const noexcept -> bool = default;
-	};
-
-	//! Import statement.
-	struct imp {
-		std::string filename;
-		auto operator==(imp const&) const noexcept -> bool = default;
-	};
-
-	//! Assignment statement.
-	struct assign {
-		tok::sym symbol;
-		ptr rhs;
-		auto operator==(assign const&) const noexcept -> bool;
-	};
-
-	//! Conditional branch - if-then or if-then-else.
-	struct branch {
-		ptr test;
-		ptr true_stmt;
-		ptr false_stmt;
-		auto operator==(branch const&) const noexcept -> bool;
-	};
-
-	//! While-loop statement.
-	struct while_loop {
-		ptr test;
-		ptr body;
-		auto operator==(while_loop const&) const noexcept -> bool;
-	};
-
-	//! For-loop statement.
-	struct for_loop {
-		tok::sym loop_var;
-		ptr range;
-		ptr body;
-		auto operator==(for_loop const&) const noexcept -> bool;
-	};
-
-	//! Return statement.
-	struct ret {
-		ptr expr;
-		auto operator==(ret const&) const noexcept -> bool;
-	};
-
+namespace gynjo {
 	//! Conditional expression.
 	struct cond {
-		ptr test;
-		ptr true_expr;
-		ptr false_expr;
+		expr_ptr test;
+		expr_ptr true_expr;
+		expr_ptr false_expr;
 		auto operator==(cond const&) const noexcept -> bool;
 	};
 
 	//! Block expression.
 	struct block {
-		std::unique_ptr<std::vector<node>> stmts;
+		std::unique_ptr<std::vector<stmt>> stmts;
 
 		block();
 
 		block(block const& that);
 		block(block&&) noexcept = default;
+
+		~block();
 
 		auto operator=(block const& that) -> block&;
 		auto operator=(block&&) noexcept -> block& = default;
@@ -122,77 +45,77 @@ namespace gynjo::ast {
 
 	//! Logical AND expression.
 	struct and_ {
-		ptr left;
-		ptr right;
+		expr_ptr left;
+		expr_ptr right;
 		auto operator==(and_ const&) const noexcept -> bool;
 	};
 
 	//! Logical OR expression.
 	struct or_ {
-		ptr left;
-		ptr right;
+		expr_ptr left;
+		expr_ptr right;
 		auto operator==(or_ const&) const noexcept -> bool;
 	};
 
 	//! Logical NOT expression.
 	struct not_ {
-		ptr expr;
+		expr_ptr expr;
 		auto operator==(not_ const&) const noexcept -> bool;
 	};
 
 	//! Less-than comparison expression.
 	struct eq {
-		ptr left;
-		ptr right;
+		expr_ptr left;
+		expr_ptr right;
 		auto operator==(eq const&) const noexcept -> bool;
 	};
 
 	//! Less-than comparison expression.
 	struct neq {
-		ptr left;
-		ptr right;
+		expr_ptr left;
+		expr_ptr right;
 		auto operator==(neq const&) const noexcept -> bool;
 	};
 
 	//! Less-than comparison expression.
 	struct lt {
-		ptr left;
-		ptr right;
+		expr_ptr left;
+		expr_ptr right;
 		auto operator==(lt const&) const noexcept -> bool;
 	};
 
 	//! Less-than-or-equal comparison expression.
 	struct leq {
-		ptr left;
-		ptr right;
+		expr_ptr left;
+		expr_ptr right;
 		auto operator==(leq const&) const noexcept -> bool;
 	};
 
 	//! Greater-than comparison expression.
 	struct gt {
-		ptr left;
-		ptr right;
+		expr_ptr left;
+		expr_ptr right;
 		auto operator==(gt const&) const noexcept -> bool;
 	};
 
 	//! Greater-than-or-equal comparison expression.
 	struct geq {
-		ptr left;
-		ptr right;
+		expr_ptr left;
+		expr_ptr right;
 		auto operator==(geq const&) const noexcept -> bool;
 	};
 
 	//! Addition expression.
 	struct add {
-		ptr addend1;
-		ptr addend2;
+		expr_ptr addend1;
+		expr_ptr addend2;
 		auto operator==(add const&) const noexcept -> bool;
 	};
 
 	//! Binary subtraction expression.
 	struct sub {
-		ptr minuend;
-		ptr subtrahend;
+		expr_ptr minuend;
+		expr_ptr subtrahend;
 		auto operator==(sub const&) const noexcept -> bool;
 	};
 
@@ -214,13 +137,13 @@ namespace gynjo::ast {
 		std::vector<bool> negations;
 
 		//! A node in a function application, exponentiation, multiplication, or division.
-		std::unique_ptr<std::vector<node>> items;
+		std::unique_ptr<std::vector<expr>> items;
 
 		//! Connector i indicates how item i + 1 is connected to item i.
 		std::vector<connector> connectors;
 
 		cluster() = default;
-		cluster(std::vector<bool> negations, std::unique_ptr<std::vector<node>> items, std::vector<connector> connectors);
+		cluster(std::vector<bool> negations, std::unique_ptr<std::vector<expr>> items, std::vector<connector> connectors);
 
 		cluster(cluster const& that);
 		cluster(cluster&&) noexcept = default;
@@ -232,68 +155,75 @@ namespace gynjo::ast {
 	};
 
 	//! Tuple expression.
-	struct tup {
-		std::unique_ptr<std::vector<node>> elems;
+	struct tup_expr {
+		std::unique_ptr<std::vector<expr>> elems;
 
-		tup();
-		explicit tup(std::unique_ptr<std::vector<node>> elems);
+		tup_expr();
+		explicit tup_expr(std::unique_ptr<std::vector<expr>> elems);
 
-		tup(tup const& that);
-		tup(tup&&) noexcept = default;
+		tup_expr(tup_expr const& that);
+		tup_expr(tup_expr&&) noexcept = default;
 
-		auto operator=(tup const& that) -> tup&;
-		auto operator=(tup&&) noexcept -> tup& = default;
+		auto operator=(tup_expr const& that) -> tup_expr&;
+		auto operator=(tup_expr&&) noexcept -> tup_expr& = default;
 
-		auto operator==(tup const&) const noexcept -> bool;
+		auto operator==(tup_expr const&) const noexcept -> bool;
 	};
 
 	template <typename... Args>
-	auto make_tup(Args&&... args) {
-		auto elems = std::make_unique<std::vector<node>>();
+	auto make_tup_expr(Args&&... args) {
+		auto elems = std::make_unique<std::vector<expr>>();
 		(elems->push_back(std::move(args)), ...);
-		return tup{std::move(elems)};
+		return tup_expr{std::move(elems)};
 	}
 
 	//! List expression.
-	struct list {
-		std::unique_ptr<std::deque<node>> elems;
+	struct list_expr {
+		std::unique_ptr<std::deque<expr>> elems;
 
-		list();
-		explicit list(std::unique_ptr<std::deque<node>> elems);
+		list_expr();
+		explicit list_expr(std::unique_ptr<std::deque<expr>> elems);
 
-		list(list const& that);
-		list(list&&) noexcept = default;
+		list_expr(list_expr const& that);
+		list_expr(list_expr&&) noexcept = default;
 
-		auto operator=(list const& that) -> list&;
-		auto operator=(list&&) noexcept -> list& = default;
+		auto operator=(list_expr const& that) -> list_expr&;
+		auto operator=(list_expr&&) noexcept -> list_expr& = default;
 
-		auto operator==(list const&) const noexcept -> bool;
+		auto operator==(list_expr const&) const noexcept -> bool;
 	};
 
 	template <typename... Args>
-	auto make_list(Args&&... args) {
-		auto elems = std::make_unique<std::vector<node>>();
+	auto make_list_expr(Args&&... args) {
+		auto elems = std::make_unique<std::vector<expr>>();
 		(elems->push_back(std::move(args)), ...);
-		return list{std::move(elems)};
+		return list_expr{std::move(elems)};
 	}
 
 	//! Lambda expression.
 	struct lambda {
-		ptr params;
+		expr_ptr params;
 
 		//! The body of a lambda can be either a user-defined function or an intrinsic function.
-		std::variant<ptr, intrinsic> body;
+		std::variant<expr_ptr, intrinsic> body;
 
 		//! Only checks structural equality for the bodies (not functional equality) because of the halting problem.
 		auto operator==(lambda const&) const noexcept -> bool;
 	};
 
-	//! Convenience function for creating an AST node pointer from @p node.
+	//! Union type of all expression types.
+	struct expr {
+		std::variant<cond, block, and_, or_, not_, eq, neq, lt, leq, gt, geq, add, sub, cluster, lambda, tup_expr, list_expr, tok::boolean, tok::num, tok::sym> value;
+
+		auto operator==(expr const&) const noexcept -> bool = default;
+	};
+
+	//! Convenience function for creating an expression pointer from @p expr.
 	template <typename T>
-	auto make_node(T&& node) {
-		return std::make_shared<ast::node>(std::forward<T>(node));
+	auto make_expr(T&& expr) {
+		return std::make_shared<gynjo::expr>(gynjo::expr{std::forward<T>(expr)});
 	}
 
-	//! Converts the AST node @p node to a user-readable string.
-	auto to_string(node const& node) -> std::string;
+	//! Converts @p expr to a user-readable string.
+	auto to_string(expr const& expr) -> std::string;
 }

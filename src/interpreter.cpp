@@ -3,10 +3,11 @@
 
 #include "interpreter.hpp"
 
-#include "ast.hpp"
 #include "environment.hpp"
+#include "expr.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
+#include "stmt.hpp"
 #include "visitation.hpp"
 
 #include <boost/multiprecision/number.hpp>
@@ -21,7 +22,7 @@ using namespace std::string_literals;
 namespace gynjo {
 	namespace {
 		template <typename F>
-		auto eval_binary(environment::ptr const& env, ast::node const& a, ast::node const& b, F&& f) -> eval_result {
+		auto eval_binary(environment::ptr const& env, expr const& a, expr const& b, F&& f) -> eval_result {
 			return eval(env, a) //
 				.and_then([&](val::value const& a) { //
 					return eval(env, b) //
@@ -77,7 +78,7 @@ namespace gynjo {
 
 		auto application(val::closure const& c, val::tup const& arg) -> eval_result {
 			// The parser guarantees the parameter list is a tuple.
-			auto const& params = std::get<ast::tup>(*c.f.params);
+			auto const& params = std::get<tup_expr>(c.f.params->value);
 			// Ensure correct number of arguments.
 			if (arg.elems->size() != params.elems->size()) {
 				return tl::unexpected{fmt::format("function requires {} argument{}, received {}",
@@ -89,13 +90,13 @@ namespace gynjo {
 			auto local_env = std::make_shared<environment>(c.env);
 			for (std::size_t i = 0; i < arg.elems->size(); ++i) {
 				// The parser guarantees that each parameter is a symbol.
-				auto param = std::get<tok::sym>((*params.elems)[i]).name;
+				auto param = std::get<tok::sym>((*params.elems)[i].value).name;
 				local_env->local_vars[param] = (*arg.elems)[i];
 			}
 			// Evaluate function body within the application environment.
 			return match(
 				c.f.body,
-				[&](ast::ptr const& body) -> eval_result { return eval(local_env, *body); },
+				[&](expr_ptr const& body) -> eval_result { return eval(local_env, *body); },
 				[&](intrinsic body) -> eval_result {
 					switch (body) {
 						case intrinsic::top:
@@ -146,10 +147,10 @@ namespace gynjo {
 		}
 	}
 
-	auto eval(environment::ptr const& env, ast::node const& node) -> eval_result {
+	auto eval(environment::ptr const& env, expr const& node) -> eval_result {
 		return match(
-			node,
-			[&](ast::cond const& cond) {
+			node.value,
+			[&](cond const& cond) {
 				return eval(env, *cond.test).and_then([&](val::value const& test_value) -> eval_result {
 					return match(
 						test_value,
@@ -166,10 +167,12 @@ namespace gynjo {
 						});
 				});
 			},
-			[&](ast::block const& block) -> eval_result {
-				for (ast::node const& stmt : (*block.stmts)) {
+			[&](block const& block) -> eval_result {
+				for (stmt const& stmt : (*block.stmts)) {
 					// A return statement exits the block early and produces a value.
-					if (std::holds_alternative<ast::ret>(stmt)) { return eval(env, *std::get<ast::ret>(stmt).expr); }
+					if (std::holds_alternative<ret>(stmt.value)) {
+						return eval(env, *std::get<ret>(stmt.value).result);
+					}
 					// Otherwise, just execute the statement.
 					auto stmt_result = exec(env, stmt);
 					// Check for error.
@@ -180,7 +183,7 @@ namespace gynjo {
 				// Return nothing if there was no return statement.
 				return val::make_tup();
 			},
-			[&](ast::and_ const& and_) -> eval_result {
+			[&](and_ const& and_) -> eval_result {
 				// Get left.
 				auto const left_result = eval(env, *and_.left);
 				if (!left_result.has_value()) { return left_result; }
@@ -201,7 +204,7 @@ namespace gynjo {
 				auto const right = std::get<tok::boolean>(right_result.value()).value;
 				return tok::boolean{left && right};
 			},
-			[&](ast::or_ const& or_) -> eval_result {
+			[&](or_ const& or_) -> eval_result {
 				// Get left.
 				auto const left_result = eval(env, *or_.left);
 				if (!left_result.has_value()) { return left_result; }
@@ -222,7 +225,7 @@ namespace gynjo {
 				auto const right = std::get<tok::boolean>(right_result.value()).value;
 				return tok::boolean{left || right};
 			},
-			[&](ast::not_ const& not_) {
+			[&](not_ const& not_) {
 				return eval(env, *not_.expr).and_then([](val::value const& val) -> eval_result {
 					return match(
 						val,
@@ -232,17 +235,17 @@ namespace gynjo {
 						});
 				});
 			},
-			[&](ast::eq const& eq) {
+			[&](eq const& eq) {
 				return eval_binary(env, *eq.left, *eq.right, [](val::value const& left, val::value const& right) -> eval_result {
 					return tok::boolean{left == right};
 				});
 			},
-			[&](ast::neq const& neq) {
+			[&](neq const& neq) {
 				return eval_binary(env, *neq.left, *neq.right, [](val::value const& left, val::value const& right) -> eval_result {
 					return tok::boolean{left != right};
 				});
 			},
-			[&](ast::lt const& lt) {
+			[&](lt const& lt) {
 				return eval_binary(env, *lt.left, *lt.right, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
@@ -255,7 +258,7 @@ namespace gynjo {
 						});
 				});
 			},
-			[&](ast::leq const& leq) {
+			[&](leq const& leq) {
 				return eval_binary(env, *leq.left, *leq.right, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
@@ -268,7 +271,7 @@ namespace gynjo {
 						});
 				});
 			},
-			[&](ast::gt const& gt) {
+			[&](gt const& gt) {
 				return eval_binary(env, *gt.left, *gt.right, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
@@ -281,7 +284,7 @@ namespace gynjo {
 						});
 				});
 			},
-			[&](ast::geq const& geq) {
+			[&](geq const& geq) {
 				return eval_binary(env, *geq.left, *geq.right, [](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
@@ -294,7 +297,7 @@ namespace gynjo {
 						});
 				});
 			},
-			[&](ast::add const& add) {
+			[&](add const& add) {
 				return eval_binary(
 					env, *add.addend1, *add.addend2, [](val::value const& addend1, val::value const& addend2) -> eval_result {
 						return bin_num_op(
@@ -303,7 +306,7 @@ namespace gynjo {
 							});
 					});
 			},
-			[&](ast::sub const& sub) {
+			[&](sub const& sub) {
 				return eval_binary(
 					env, *sub.minuend, *sub.subtrahend, [](val::value const& minuend, val::value const& subtrahend) -> eval_result {
 						return bin_num_op(
@@ -312,7 +315,7 @@ namespace gynjo {
 							});
 					});
 			},
-			[&](ast::cluster const& cluster) -> eval_result {
+			[&](cluster const& cluster) -> eval_result {
 				std::vector<val::value> items;
 				for (auto const& item_ast : *(cluster.items)) {
 					auto item_result = eval(env, item_ast);
@@ -326,7 +329,7 @@ namespace gynjo {
 
 				// Common functionality of the two function application evaluation loops.
 				// Returns an error string if something went wrong or nullopt otherwise.
-				auto do_applications = [&](ast::cluster::connector connector) -> std::optional<std::string> {
+				auto do_applications = [&](cluster::connector connector) -> std::optional<std::string> {
 					for (std::size_t i = 0; i < connectors.size();) {
 						if (connectors[i] == connector && std::holds_alternative<val::closure>(items[i])) {
 							auto const& f = items[i];
@@ -362,10 +365,10 @@ namespace gynjo {
 				};
 
 				// Do parenthesized function applications.
-				if (auto error = do_applications(ast::cluster::connector::adj_paren)) { return tl::unexpected{*error}; }
+				if (auto error = do_applications(cluster::connector::adj_paren)) { return tl::unexpected{*error}; }
 				// Do exponentiations.
 				for (std::size_t i = 0; i < connectors.size();) {
-					if (connectors[i] == ast::cluster::connector::exp) {
+					if (connectors[i] == cluster::connector::exp) {
 						auto const& base = items[i];
 						// Apply negation if necessary.
 						if (cluster.negations[i + 1]) {
@@ -393,17 +396,15 @@ namespace gynjo {
 					}
 				}
 				// Do non-parenthesized function applications.
-				if (auto error = do_applications(ast::cluster::connector::adj_nonparen)) {
-					return tl::unexpected{*error};
-				}
+				if (auto error = do_applications(cluster::connector::adj_nonparen)) { return tl::unexpected{*error}; }
 				// Do multiplication and division.
 				for (std::size_t i = 0; i < connectors.size();) {
 					switch (connectors[i]) {
-						case ast::cluster::connector::adj_paren:
+						case cluster::connector::adj_paren:
 							[[fallthrough]];
-						case ast::cluster::connector::adj_nonparen:
+						case cluster::connector::adj_nonparen:
 							[[fallthrough]];
-						case ast::cluster::connector::mul: {
+						case cluster::connector::mul: {
 							auto const& factor1 = items[i];
 							// Apply negation if necessary.
 							if (cluster.negations[i + 1]) {
@@ -468,33 +469,32 @@ namespace gynjo {
 				}
 				return items.front();
 			},
-			[&](ast::lambda const& f) -> eval_result {
+			[&](lambda const& f) -> eval_result {
 				return val::closure{f, std::make_shared<environment>(env)};
 			},
-			[&](ast::tup const& ast_tup) -> eval_result {
-				val::tup val_tup;
-				for (auto const& elem_ast : *ast_tup.elems) {
-					auto elem_result = eval(env, elem_ast);
+			[&](tup_expr const& tup_expr) -> eval_result {
+				val::tup tup;
+				for (auto const& elem_expr : *tup_expr.elems) {
+					auto elem_result = eval(env, elem_expr);
 					if (elem_result.has_value()) {
-						val_tup.elems->push_back(std::move(elem_result.value()));
+						tup.elems->push_back(std::move(elem_result.value()));
 					} else {
 						return elem_result;
 					}
 				}
-				return val_tup;
+				return tup;
 			},
-			[&](ast::list const& ast_list) -> eval_result {
-				val::value val_list = val::empty{};
-				for (auto const& elem_ast : *(ast_list.elems)) {
-					auto elem_result = eval(env, elem_ast);
+			[&](list_expr const& list_expr) -> eval_result {
+				val::value list = val::empty{};
+				for (auto const& elem_expr : *(list_expr.elems)) {
+					auto elem_result = eval(env, elem_expr);
 					if (elem_result.has_value()) {
-						val_list = val::list{
-							val::make_value(std::move(elem_result.value())), val::make_value(std::move(val_list))};
+						list = val::list{val::make_value(std::move(elem_result.value())), val::make_value(std::move(list))};
 					} else {
 						return elem_result;
 					}
 				}
-				return val_list;
+				return list;
 			},
 			[](tok::boolean const& b) -> eval_result { return b; },
 			[](tok::num const& num) -> eval_result { return val::num{num.rep}; },
@@ -516,21 +516,21 @@ namespace gynjo {
 		if (!lex_result.has_value()) { return tl::unexpected{"(lex error) " + lex_result.error()}; }
 		auto tokens = std::move(lex_result.value());
 		// Parse.
-		parse_result const parse_result = parse_expr(tokens.begin(), tokens.end());
+		auto const parse_result = parse_expr(tokens.begin(), tokens.end());
 		if (!parse_result.has_value()) { return tl::unexpected{"(parse error) " + parse_result.error()}; }
 		auto const expr_end = parse_result.value().it;
 		if (expr_end != tokens.end()) {
 			return tl::unexpected{"(parse_error) unused tokens starting at " + to_string(*expr_end)};
 		}
 		// Evaluate.
-		return eval(env, parse_result.value().node);
+		return eval(env, parse_result.value().expr);
 	}
 
-	auto exec(environment::ptr const& env, ast::node const& node) -> exec_result {
+	auto exec(environment::ptr const& env, stmt const& stmt) -> exec_result {
 		return match(
-			node,
-			[](ast::nop) -> exec_result { return std::monostate(); },
-			[&](ast::imp const& imp) -> exec_result {
+			stmt.value,
+			[](nop) -> exec_result { return std::monostate(); },
+			[&](imp const& imp) -> exec_result {
 				std::ifstream fin{imp.filename + ".gynj"};
 				if (!fin.is_open()) {
 					return tl::unexpected{fmt::format("failed to load library \"{}\"", imp.filename)};
@@ -539,7 +539,7 @@ namespace gynjo {
 				ss << fin.rdbuf();
 				return exec(env, ss.str());
 			},
-			[&](ast::assign const& assign) -> exec_result {
+			[&](assign const& assign) -> exec_result {
 				auto rhs_result = eval(env, *assign.rhs);
 				// Check for error in RHS.
 				if (!rhs_result.has_value()) { return tl::unexpected{"in RHS of assignment: " + rhs_result.error()}; }
@@ -549,7 +549,7 @@ namespace gynjo {
 				env->local_vars.insert_or_assign(assign.symbol.name, std::move(rhs_result.value()));
 				return std::monostate{};
 			},
-			[&](ast::branch const& branch) -> exec_result {
+			[&](branch const& branch) -> exec_result {
 				auto test_result = eval(env, *branch.test);
 				if (!test_result.has_value()) {
 					return tl::unexpected{"in branch test expression: " + test_result.error()};
@@ -568,7 +568,7 @@ namespace gynjo {
 							fmt::format("expected boolean in conditional test, found {}", to_string(test_result.value()))};
 					});
 			},
-			[&](ast::while_loop const& loop) -> exec_result {
+			[&](while_loop const& loop) -> exec_result {
 				for (;;) {
 					// Evaluate the test condition.
 					auto test_result = eval(env, *loop.test);
@@ -593,7 +593,7 @@ namespace gynjo {
 					}
 				}
 			},
-			[&](ast::for_loop const& loop) -> exec_result {
+			[&](for_loop const& loop) -> exec_result {
 				auto range_result = eval(env, *loop.range);
 				if (!range_result.has_value()) { return tl::unexpected{range_result.error()}; }
 				return match(
@@ -625,12 +625,13 @@ namespace gynjo {
 						return tl::unexpected{fmt::format("expected a list, found {}", to_string(range_result.value()))};
 					});
 			},
-			[&](ast::ret const&) -> exec_result { return tl::unexpected{"cannot return outside statement block"s}; },
-			[&](auto const&) -> exec_result {
-				auto result = eval(env, node);
-				if (!result.has_value()) { return tl::unexpected{result.error()}; }
-				if (result.value() != val::value{val::make_tup()}) {
-					return tl::unexpected{"unused expression result: " + to_string(result.value())};
+			[&](ret const&) -> exec_result { return tl::unexpected{"cannot return outside statement block"s}; },
+			[&](expr_stmt const& expr_stmt) -> exec_result {
+				auto eval_result = eval(env, *expr_stmt.expr);
+				if (!eval_result.has_value()) { return tl::unexpected{eval_result.error()}; }
+				// Expression statements must evaluate to nothing.
+				if (eval_result.value() != val::value{val::make_tup()}) {
+					return tl::unexpected{"unused expression result: " + to_string(eval_result.value())};
 				}
 				return std::monostate{};
 			});
@@ -645,11 +646,11 @@ namespace gynjo {
 		auto end = lex_result.value().end();
 		while (it != end) {
 			// Parse.
-			parse_result const parse_result = parse_stmt(it, end);
+			auto const parse_result = parse_stmt(it, end);
 			if (!parse_result.has_value()) { return tl::unexpected{"(parse error) " + parse_result.error()}; }
 			it = parse_result.value().it;
 			// Execute.
-			auto exec_result = exec(env, parse_result.value().node);
+			auto exec_result = exec(env, parse_result.value().stmt);
 			if (!exec_result.has_value()) { return tl::unexpected{"(runtime error) " + exec_result.error()}; }
 		}
 		return std::monostate{};
