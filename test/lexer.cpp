@@ -59,44 +59,35 @@ TEST_SUITE("lexer") {
 	}
 
 	TEST_CASE("key words") {
-		auto const expected = std::vector<token>{//
-			sym{"imports"},
-			imp{},
-			sym{"ifs"},
-			if_{},
-			sym{"thens"},
-			then{},
-			sym{"elses"},
-			else_{},
-			sym{"whiles"},
-			while_{},
-			sym{"fors"},
-			for_{},
-			sym{"ins"},
-			in{},
-			sym{"dos"},
-			do_{},
-			sym{"returns"},
-			ret{},
-			sym{"ands"},
-			and_{},
-			sym{"ors"},
-			or_{},
-			sym{"nots"},
-			not_{}};
+		// clang-format off
+		auto const expected = std::vector<token>{
+			imp{}, tok::num{"1"}, sym{"imports"},
+			if_{}, tok::num{"1"}, sym{"ifs"},
+			then{}, tok::num{"1"}, sym{"thens"},
+			else_{}, tok::num{"1"}, sym{"elses"},
+			while_{}, tok::num{"1"}, sym{"whiles"},
+			for_{}, tok::num{"1"}, sym{"fors"},
+			in{}, tok::num{"1"}, sym{"ins"},
+			do_{}, tok::num{"1"}, sym{"dos"},
+			ret{}, tok::num{"1"}, sym{"returns"},
+			and_{}, tok::num{"1"}, sym{"ands"},
+			or_{}, tok::num{"1"}, sym{"ors"},
+			not_{}, tok::num{"1"}, sym{"nots"},
+			};
+		// clang-format on
 		auto const actual = lex(R"(
-			imports import
-			ifs if
-			thens then
-			elses else
-			whiles while
-			fors for
-			ins in
-			dos do
-			returns return
-			ands and
-			ors or
-			nots not
+			import1 imports
+			if1 ifs
+			then1 thens
+			else1 elses
+			while1 whiles
+			for1 fors
+			in1 ins
+			do1 dos
+			return1 returns
+			and1 ands
+			or1 ors
+			not1 nots
 			)");
 		CHECK(expected == actual.value());
 	}

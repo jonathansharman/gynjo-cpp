@@ -18,57 +18,67 @@ namespace gynjo {
 		using sv = std::string_view;
 		constexpr auto flags = std::regex::ECMAScript | std::regex::optimize;
 
+		//! Handles the simplest regex/str_to_tok_t cases.
+		auto simple(std::string regex, std::optional<tok::token> token) {
+			return std::pair{std::regex{regex, flags}, [token](sv) { return token; }};
+		}
+
+		//! Handles the reserved-word-based regex/str_to_tok_t cases.
+		auto reserved(std::string word, tok::token token) {
+			return std::pair{std::regex{word + "(?![a-zA-Z])", flags}, [token](sv) { return token; }};
+		}
+
 		std::initializer_list<std::pair<std::regex, str_to_tok_t>> const regexes_to_tokens = {
 			// Whitespace (ignored)
-			{std::regex{R"...(\s+)...", flags}, [](sv) { return std::nullopt; }},
+			simple(R"...(\s+)...", std::nullopt),
 			// Comment (ignored)
-			{std::regex{R"...(//.*)...", flags}, [](sv) { return std::nullopt; }},
+			simple(R"...(//.*)...", std::nullopt),
 			// Operators/separators
-			{std::regex{R"...(=)...", flags}, [](sv) { return tok::eq{}; }},
-			{std::regex{R"...(!=)...", flags}, [](sv) { return tok::neq{}; }},
-			{std::regex{R"...(<=)...", flags}, [](sv) { return tok::leq{}; }},
-			{std::regex{R"...(<)...", flags}, [](sv) { return tok::lt{}; }},
-			{std::regex{R"...(>=)...", flags}, [](sv) { return tok::geq{}; }},
-			{std::regex{R"...(>)...", flags}, [](sv) { return tok::gt{}; }},
-			{std::regex{R"...(\+)...", flags}, [](sv) { return tok::plus{}; }},
-			{std::regex{R"...(->)...", flags}, [](sv) { return tok::arrow{}; }},
-			{std::regex{R"...(-)...", flags}, [](sv) { return tok::minus{}; }},
-			{std::regex{R"...((\*\*)|\^)...", flags}, [](sv) { return tok::exp{}; }},
-			{std::regex{R"...(\*)...", flags}, [](sv) { return tok::mul{}; }},
-			{std::regex{R"...(/)...", flags}, [](sv) { return tok::div{}; }},
-			{std::regex{R"...(\()...", flags}, [](sv) { return tok::lparen{}; }},
-			{std::regex{R"...(\))...", flags}, [](sv) { return tok::rparen{}; }},
-			{std::regex{R"...(\[)...", flags}, [](sv) { return tok::lsquare{}; }},
-			{std::regex{R"...(\])...", flags}, [](sv) { return tok::rsquare{}; }},
-			{std::regex{R"...(\{)...", flags}, [](sv) { return tok::lcurly{}; }},
-			{std::regex{R"...(\})...", flags}, [](sv) { return tok::rcurly{}; }},
-			{std::regex{R"...(,)...", flags}, [](sv) { return tok::com{}; }},
-			{std::regex{R"...(;)...", flags}, [](sv) { return tok::semicolon{}; }},
-			{std::regex{R"...(\?)...", flags}, [](sv) { return tok::que{}; }},
-			{std::regex{R"...(:)...", flags}, [](sv) { return tok::colon{}; }},
+			simple(R"...(=)...", tok::eq{}),
+			simple(R"...(!=)...", tok::neq{}),
+			simple(R"...(<=)...", tok::leq{}),
+			simple(R"...(<)...", tok::lt{}),
+			simple(R"...(>=)...", tok::geq{}),
+			simple(R"...(>)...", tok::gt{}),
+			simple(R"...(\+)...", tok::plus{}),
+			simple(R"...(->)...", tok::arrow{}),
+			simple(R"...(-)...", tok::minus{}),
+			simple(R"...((\*\*)|\^)...", tok::exp{}),
+			simple(R"...(\*)...", tok::mul{}),
+			simple(R"...(/)...", tok::div{}),
+			simple(R"...(\()...", tok::lparen{}),
+			simple(R"...(\))...", tok::rparen{}),
+			simple(R"...(\[)...", tok::lsquare{}),
+			simple(R"...(\])...", tok::rsquare{}),
+			simple(R"...(\{)...", tok::lcurly{}),
+			simple(R"...(\})...", tok::rcurly{}),
+			simple(R"...(,)...", tok::com{}),
+			simple(R"...(;)...", tok::semicolon{}),
+			simple(R"...(\?)...", tok::que{}),
+			simple(R"...(:)...", tok::colon{}),
 			// Value literals
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)...", flags}, [](sv sv) { return tok::num{sv.data()}; }},
-			{std::regex{R"...(true\b)...", flags}, [](sv) { return tok::boolean{true}; }},
-			{std::regex{R"...(false\b)...", flags}, [](sv) { return tok::boolean{false}; }},
+			reserved("true", tok::boolean{true}),
+			reserved("false", tok::boolean{false}),
 			// Intrinsic functions
-			{std::regex{R"...(top\b)...", flags}, [](sv) { return intrinsic::top; }},
-			{std::regex{R"...(pop\b)...", flags}, [](sv) { return intrinsic::pop; }},
-			{std::regex{R"...(push\b)...", flags}, [](sv) { return intrinsic::push; }},
-			{std::regex{R"...(print\b)...", flags}, [](sv) { return intrinsic::print; }},
+			reserved("top", intrinsic::top),
+			reserved("pop", intrinsic::pop),
+			reserved("push", intrinsic::push),
+			reserved("print", intrinsic::print),
 			// Keywords
-			{std::regex{R"...(import\b)...", flags}, [](sv) { return tok::imp{}; }},
-			{std::regex{R"...(let\b)...", flags}, [](sv) { return tok::let{}; }},
-			{std::regex{R"...(if\b)...", flags}, [](sv) { return tok::if_{}; }},
-			{std::regex{R"...(then\b)...", flags}, [](sv) { return tok::then{}; }},
-			{std::regex{R"...(else\b)...", flags}, [](sv) { return tok::else_{}; }},
-			{std::regex{R"...(while\b)...", flags}, [](sv) { return tok::while_{}; }},
-			{std::regex{R"...(for\b)...", flags}, [](sv) { return tok::for_{}; }},
-			{std::regex{R"...(in\b)...", flags}, [](sv) { return tok::in{}; }},
-			{std::regex{R"...(do\b)...", flags}, [](sv) { return tok::do_{}; }},
-			{std::regex{R"...(return\b)...", flags}, [](sv) { return tok::ret{}; }},
-			{std::regex{R"...(and\b)...", flags}, [](sv) { return tok::and_{}; }},
-			{std::regex{R"...(or\b)...", flags}, [](sv) { return tok::or_{}; }},
-			{std::regex{R"...(not\b)...", flags}, [](sv) { return tok::not_{}; }},
+			reserved("import", tok::imp{}),
+			reserved("let", tok::let{}),
+			reserved("if", tok::if_{}),
+			reserved("then", tok::then{}),
+			reserved("else", tok::else_{}),
+			reserved("while", tok::while_{}),
+			reserved("for", tok::for_{}),
+			reserved("in", tok::in{}),
+			reserved("do", tok::do_{}),
+			reserved("return", tok::ret{}),
+			reserved("and", tok::and_{}),
+			reserved("or", tok::or_{}),
+			reserved("not", tok::not_{}),
 			// Symbol
 			{std::regex{R"...([a-zA-Z_]+)...", flags}, [](sv sv) { return tok::sym{sv.data()}; }}};
 	}
