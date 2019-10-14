@@ -33,8 +33,16 @@ auto main(int argc, char* argv[]) -> int {
 	for (;;) {
 		std::cout << ">> ";
 		std::getline(std::cin, line);
-		auto exec_result = exec(env, line);
-		// auto exec_result = exec(env, fmt::format("print({});", line));
-		if (!exec_result.has_value()) { fmt::print("{}\n", exec_result.error()); }
+		// First try to interpret the line as an expression.
+		auto eval_result = eval(env, line);
+		if (eval_result.has_value()) {
+			// Print the computed value.
+			fmt::print("{}\n", val::to_string(eval_result.value()));
+		} else {
+			// Invalid expression. Try a statement instead.
+			auto exec_result = exec(env, line);
+			// Still didn't work; report statement error.
+			if (!exec_result.has_value()) { fmt::print("{}\n", exec_result.error()); }
+		}
 	}
 }
