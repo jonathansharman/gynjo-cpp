@@ -29,18 +29,26 @@ auto main(int argc, char* argv[]) -> int {
 	using namespace gynjo;
 
 	auto env = environment::make_with_core_libs();
-	std::string line;
 	for (;;) {
 		std::cout << ">> ";
-		std::getline(std::cin, line);
+		std::string input;
+		std::getline(std::cin, input);
+		while (input.back() == '\\') {
+			// Continue line. Add a space to ensure new token on next line.
+			input.back() = ' ';
+			std::cout << "   ";
+			std::string next_line;
+			std::getline(std::cin, next_line);
+			input += next_line;
+		}
 		// First try to interpret the line as an expression.
-		auto eval_result = eval(env, line);
+		auto eval_result = eval(env, input);
 		if (eval_result.has_value()) {
 			// Print the computed value.
 			fmt::print("{}\n", val::to_string(eval_result.value()));
 		} else {
 			// Invalid expression. Try a statement instead.
-			auto exec_result = exec(env, line);
+			auto exec_result = exec(env, input);
 			// Still didn't work; report statement error.
 			if (!exec_result.has_value()) { fmt::print("{}\n", exec_result.error()); }
 		}
