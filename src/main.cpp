@@ -33,7 +33,7 @@ auto main(int argc, char* argv[]) -> int {
 		std::cout << ">> ";
 		std::string input;
 		std::getline(std::cin, input);
-		while (input.back() == '\\') {
+		while (!input.empty() && input.back() == '\\') {
 			// Continue line. Add a space to ensure new token on next line.
 			input.back() = ' ';
 			std::cout << "   ";
