@@ -149,6 +149,10 @@ namespace gynjo {
 				[&](tok::num const& num) -> parse_expr_result {
 					return it_expr{it, num};
 				},
+				// String
+				[&](std::string const& str) -> parse_expr_result {
+					return it_expr{it, str};
+				},
 				// Symbol or lambda
 				[&](tok::sym const& sym) -> parse_expr_result {
 					// Could be a parentheses-less unary lambda. Try to parse a lambda body.
@@ -163,7 +167,7 @@ namespace gynjo {
 				},
 				// Anything else is unexpected.
 				[](auto const& t) -> parse_expr_result {
-					return tl::unexpected{"unexpected token in expression: " + to_string(t)};
+					return tl::unexpected{"unexpected token in expression: " + tok::to_string(t)};
 				});
 		}
 
@@ -547,11 +551,18 @@ namespace gynjo {
 		//! Parses an import statement, starting after "import".
 		auto parse_import(token_it begin, token_it end) -> parse_stmt_result {
 			if (begin == end) { return tl::unexpected{"expected import target"s}; }
-			if (std::holds_alternative<tok::sym>(*begin)) {
-				return it_stmt{begin + 1, imp{std::get<tok::sym>(*begin).name}};
-			} else {
-				return tl::unexpected{"expected filename"s};
-			}
+			return match(
+				*begin,
+				[&](tok::sym const& filename) -> parse_stmt_result {
+					return it_stmt{begin + 1, imp{filename.name}};
+				},
+				[&](std::string const& filename) -> parse_stmt_result {
+					return it_stmt{begin + 1, imp{filename}};
+				},
+				[&](auto const&) -> parse_stmt_result {
+					return tl::unexpected{
+						"expected filename (symbol or string) in import statement, found " + to_string(*begin)};
+				});
 		}
 	}
 

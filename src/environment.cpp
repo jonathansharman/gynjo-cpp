@@ -13,13 +13,8 @@ namespace gynjo {
 	auto environment::make_with_core_libs() -> ptr {
 		static auto result = [] {
 			auto env = std::make_shared<environment>();
-			auto core_libs = {"constants", "core"};
-			for (auto const& lib : core_libs) {
-				auto import_result = exec(env, fmt::format("import {}", lib));
-				if (!import_result.has_value()) {
-					fmt::print("Error while importing {}: {}\n", lib, import_result.error());
-				}
-			}
+			import_lib(env, "\"core/constants.gynj\"");
+			import_lib(env, "\"core/core.gynj\"");
 			return env;
 		}();
 		return result;
@@ -39,5 +34,10 @@ namespace gynjo {
 			// Not found.
 			return std::nullopt;
 		}
+	}
+
+	auto import_lib(environment::ptr const& env, std::string_view lib) -> void {
+		auto import_result = exec(env, fmt::format("import {}", lib));
+		if (!import_result.has_value()) { fmt::print("Error while importing {}: {}\n", lib, import_result.error()); }
 	}
 }

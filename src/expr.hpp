@@ -213,7 +213,7 @@ namespace gynjo {
 
 	//! Union type of all expression types.
 	struct expr {
-		std::variant<cond, block, and_, or_, not_, eq, neq, lt, leq, gt, geq, add, sub, cluster, lambda, tup_expr, list_expr, tok::boolean, tok::num, tok::sym> value;
+		std::variant<cond, block, and_, or_, not_, eq, neq, lt, leq, gt, geq, add, sub, cluster, lambda, tup_expr, list_expr, tok::boolean, tok::num, std::string, tok::sym> value;
 
 		auto operator==(expr const&) const noexcept -> bool = default;
 	};

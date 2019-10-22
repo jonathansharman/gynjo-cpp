@@ -498,6 +498,7 @@ namespace gynjo {
 			},
 			[](tok::boolean const& b) -> eval_result { return b; },
 			[](tok::num const& num) -> eval_result { return val::num{num.rep}; },
+			[](std::string const& str) -> eval_result { return str; },
 			[&](tok::sym const& sym) -> eval_result {
 				if (auto lookup = env->lookup(sym.name)) {
 					return *lookup;
@@ -531,7 +532,7 @@ namespace gynjo {
 			stmt.value,
 			[](nop) -> exec_result { return std::monostate(); },
 			[&](imp const& imp) -> exec_result {
-				std::ifstream fin{imp.filename + ".gynj"};
+				std::ifstream fin{imp.filename};
 				if (!fin.is_open()) {
 					return tl::unexpected{fmt::format("failed to load library \"{}\"", imp.filename)};
 				}

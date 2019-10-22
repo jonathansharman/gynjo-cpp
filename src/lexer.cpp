@@ -60,6 +60,16 @@ namespace gynjo {
 			{std::regex{R"...((\.\d+)|(0|[1-9]\d*)(\.\d+)?)...", flags}, [](sv sv) { return tok::num{sv.data()}; }},
 			reserved("true", tok::boolean{true}),
 			reserved("false", tok::boolean{false}),
+			{std::regex{R"...("([^"\\]|\\["\\])*")..."},
+				[](sv sv) {
+					// Strip quotes and escape characters.
+					std::string result;
+					for (auto it = sv.begin() + 1; it != sv.end() - 1; ++it) {
+						if (*it == '\\') { ++it; }
+						result += *it;
+					}
+					return result;
+				}},
 			// Intrinsic functions
 			reserved("top", intrinsic::top),
 			reserved("pop", intrinsic::pop),

@@ -213,6 +213,7 @@ namespace gynjo {
 			},
 			[](tok::boolean const& b) { return tok::to_string(b); },
 			[](tok::num const& num) { return num.rep; },
+			[](std::string const& str) { return tok::to_string(str); },
 			[](tok::sym const& sym) { return sym.name; });
 	}
 }

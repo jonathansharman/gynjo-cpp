@@ -178,7 +178,7 @@ namespace gynjo::tok {
 		plus, minus, mul, div, exp, // arithmetic ops
 		lparen, rparen, lsquare, rsquare, lcurly, rcurly, // brackets
 		com, semicolon, arrow, que, colon, // punctuation
-		boolean, num, sym, intrinsic // values
+		boolean, num, sym, intrinsic, std::string // values
 		// clang-format on
 		>;
 
@@ -225,6 +225,7 @@ namespace gynjo::tok {
 			[](boolean const& b) { return b.value ? "true"s : "false"s; },
 			[](num const& n) { return n.rep; },
 			[](sym const& s) { return s.name; },
-			[](intrinsic const& f) { return name(f); });
+			[](intrinsic const& f) { return name(f); },
+			[](std::string const& str) { return '"' + str + '"'; });
 	}
 }

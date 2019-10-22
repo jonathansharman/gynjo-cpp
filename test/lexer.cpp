@@ -91,4 +91,19 @@ TEST_SUITE("lexer") {
 			)");
 		CHECK(expected == actual.value());
 	}
+
+	TEST_CASE("strings") {
+		SUBCASE("valid") {
+			CHECK(token{""} == lex(R"...("")...").value().front());
+			CHECK(token{"abc"} == lex(R"...("abc")...").value().front());
+			CHECK(token{R"...("abc")..."} == lex(R"...("\"abc\"")...").value().front());
+			CHECK(token{R"...(a\b\c)..."} == lex(R"...("a\\b\\c")...").value().front());
+		}
+		SUBCASE("invalid") {
+			CHECK(!lex(R"...(")...").has_value());
+			CHECK(!lex(R"...(""")...").has_value());
+			CHECK(!lex(R"...("\")...").has_value());
+			CHECK(!lex(R"...("\a")...").has_value());
+		}
+	}
 }

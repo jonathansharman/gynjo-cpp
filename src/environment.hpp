@@ -34,4 +34,7 @@ namespace gynjo {
 		//! Returns the value of the variable with name @name or nullopt if the variable is undefined.
 		auto lookup(std::string const& name) -> std::optional<val::value> const;
 	};
+
+	//! Attempts to import @p lib into @p env and displays an error message on failure.
+	auto import_lib(environment::ptr const& env, std::string_view lib) -> void;
 }

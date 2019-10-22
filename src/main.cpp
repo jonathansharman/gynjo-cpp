@@ -28,7 +28,13 @@ auto main(int argc, char* argv[]) -> int {
 
 	using namespace gynjo;
 
+	// Create environment with core libs.
 	auto env = environment::make_with_core_libs();
+
+	// Try to load user's profile script.
+	import_lib(env, "\"profile.gynj\"");
+
+	// REPL
 	for (;;) {
 		std::cout << ">> ";
 		std::string input;

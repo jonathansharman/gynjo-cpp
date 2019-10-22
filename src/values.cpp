@@ -32,6 +32,7 @@ namespace gynjo::val {
 			val,
 			[](tok::boolean const& b) { return tok::to_string(b); },
 			[](num const& num) { return num.str(); },
+			[](std::string const& str) { return tok::to_string(str); },
 			[](tup const& tup) {
 				std::string result = "(";
 				if (!tup.elems->empty()) {
