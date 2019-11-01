@@ -147,10 +147,17 @@ TEST_SUITE("interpreter") {
 		CHECK(expected == actual.value());
 	}
 
-	TEST_CASE("simple compound with parentheses") {
+	TEST_CASE("simple compound expression with parentheses") {
 		auto env = environment::make_empty();
 		val::value const expected = val::num{5.0};
 		auto const actual = eval(env, "-5 *(1 +  -2)");
+		CHECK(expected == actual.value());
+	}
+
+	TEST_CASE("exponentiation is right-associative") {
+		auto env = environment::make_empty();
+		val::value const expected = val::num{262144};
+		auto const actual = eval(env, "4^3^2");
 		CHECK(expected == actual.value());
 	}
 

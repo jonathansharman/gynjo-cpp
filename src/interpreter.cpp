@@ -367,7 +367,7 @@ namespace gynjo {
 				// Do parenthesized function applications.
 				if (auto error = do_applications(cluster::connector::adj_paren)) { return tl::unexpected{*error}; }
 				// Do exponentiations.
-				for (std::size_t i = 0; i < connectors.size();) {
+				for (std::ptrdiff_t i = connectors.size() - 1; i >= 0; --i) {
 					if (connectors[i] == cluster::connector::exp) {
 						auto const& base = items[i];
 						// Apply negation if necessary.
@@ -392,7 +392,7 @@ namespace gynjo {
 							return power;
 						}
 					} else {
-						++i;
+						--i;
 					}
 				}
 				// Do non-parenthesized function applications.
