@@ -330,7 +330,7 @@ TEST_SUITE("interpreter") {
 		auto env = environment::make_empty();
 		val::value const expected = val::num{
 			"3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679"};
-		exec(env, "import \"core/constants\"");
+		exec(env, "import \"core/constants.gynj\"");
 		auto const actual = eval(env, "PI");
 		CHECK(expected == actual.value());
 	}
