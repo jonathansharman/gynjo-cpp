@@ -63,7 +63,15 @@ namespace gynjo {
 			//! Either another list or empty.
 			ptr tail;
 
+			list(ptr head, ptr tail);
+
+			list(list const&) = default;
+			list(list&&) noexcept = default;
+
 			~list() noexcept;
+
+			list& operator=(list const&) = default;
+			list& operator=(list&&) noexcept = default;
 
 			auto operator==(list const&) const noexcept -> bool;
 		};

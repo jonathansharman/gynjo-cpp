@@ -16,9 +16,13 @@ namespace gynjo::val {
 		return *elems == *that.elems;
 	}
 
+	list::list(ptr head, ptr tail) : head{std::move(head)}, tail{std::move(tail)} {}
+
 	list::~list() noexcept {
-		while (head && std::holds_alternative<val::list>(*head)) {
-			head = std::move(tail);
+		// To avoid stack overflow, destroy iteratively by eating the tail.
+		auto tail_eater = std::move(tail);
+		while (tail_eater != nullptr && std::holds_alternative<val::list>(*tail_eater)) {
+			tail_eater = std::move(std::get<val::list>(*tail_eater).tail);
 		}
 	}
 

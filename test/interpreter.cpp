@@ -207,16 +207,17 @@ TEST_SUITE("interpreter") {
 		}
 	}
 
-	TEST_CASE("list destruction does not cause stack overflow" * doctest::skip{}) {
+	TEST_CASE("list destruction does not cause stack overflow") {
 		auto env = environment::make_empty();
-		eval(env, R"(
-			let i = 0;
-			let l = [];
+		auto result = exec(env, R"(
+			let i = 0
+			let l = []
 			while i < 1000 do {
-				let l = push(l, i);
-				let i = i + 1;
+				let l = push(l, i)
+				let i = i + 1
 			};
 			)");
+		CHECK(result.has_value());
 	}
 
 	TEST_CASE("math operations on lists") {
