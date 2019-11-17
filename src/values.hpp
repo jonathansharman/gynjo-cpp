@@ -63,23 +63,27 @@ namespace gynjo {
 			//! Either another list or empty.
 			ptr tail;
 
-			list(ptr head, ptr tail);
-
-			list(list const&) = default;
-			list(list&&) noexcept = default;
-
-			~list() noexcept;
-
-			list& operator=(list const&) = default;
-			list& operator=(list&&) noexcept = default;
-
 			auto operator==(list const&) const noexcept -> bool;
 		};
 
 		//! Convenience function for creating a value pointer from @p value.
 		template <typename T>
 		auto make_value(T&& value) {
-			return std::make_shared<val::value>(std::forward<T>(value));
+			if constexpr (std::is_same_v<std::remove_cvref_t<T>, list>) {
+				// To avoid stack overflow, list pointers must be destroyed iteratively by eating the tail.
+				return std::shared_ptr<val::value>(new val::value{std::forward<T>(value)}, [](val::value* v) {
+					auto& l = std::get<list>(*v);
+					l.head = nullptr;
+					auto tail_eater = std::move(l.tail);
+					while (tail_eater != nullptr && std::holds_alternative<val::list>(*tail_eater)) {
+						tail_eater = std::move(std::get<val::list>(*tail_eater).tail);
+					}
+					tail_eater = nullptr;
+					delete v;
+				});
+			} else {
+				return std::make_shared<val::value>(std::forward<T>(value));
+			}
 		}
 
 		template <typename... Args>
