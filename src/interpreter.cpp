@@ -130,8 +130,13 @@ namespace gynjo {
 										fmt::format("push() expected a list, found {}", val::to_string(arg))};
 								});
 						case intrinsic::print:
-							fmt::print("{}\n", to_string(*local_env->lookup("value")));
+							std::cout << fmt::format("{}\n", to_string(*local_env->lookup("value")));
 							return val::make_tup();
+						case intrinsic::read: {
+							std::string result;
+							std::getline(std::cin, result);
+							return val::value{result};
+						}
 						default:
 							// unreachable
 							return tl::unexpected{"call to unknown intrinsic function"s};

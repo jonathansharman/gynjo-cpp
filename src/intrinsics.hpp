@@ -13,7 +13,8 @@ namespace gynjo {
 		pop,
 		push,
 		// I/O
-		print
+		print,
+		read
 	};
 
 	//! The user-readable name of intrinsic function @p f.

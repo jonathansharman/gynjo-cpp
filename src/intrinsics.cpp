@@ -14,6 +14,8 @@ namespace gynjo {
 				return "push";
 			case intrinsic::print:
 				return "print";
+			case intrinsic::read:
+				return "read";
 			default:
 				// unreachable
 				return "unknown";

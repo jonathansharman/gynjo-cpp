@@ -75,6 +75,7 @@ namespace gynjo {
 			reserved("pop", intrinsic::pop),
 			reserved("push", intrinsic::push),
 			reserved("print", intrinsic::print),
+			reserved("read", intrinsic::read),
 			// Keywords
 			reserved("import", tok::imp{}),
 			reserved("let", tok::let{}),

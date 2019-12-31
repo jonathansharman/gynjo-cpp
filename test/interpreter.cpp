@@ -8,6 +8,8 @@
 #endif
 #include <doctest/doctest.h>
 
+#include <sstream>
+
 TEST_SUITE("interpreter") {
 	using namespace gynjo;
 
@@ -394,5 +396,22 @@ TEST_SUITE("interpreter") {
 			)");
 		auto const actual = eval(env, "a");
 		CHECK(expected == actual.value());
+	}
+
+	TEST_CASE("print() and read()") {
+		auto env = environment::make_empty();
+		// Temporarily redirect cin and cout to string streams to allow control of input and observation of output.
+		std::istringstream sin{"test"};
+		auto cin_rdbuf = std::cin.rdbuf(sin.rdbuf());
+		std::ostringstream sout;
+		auto cout_rdbuf = std::cout.rdbuf(sout.rdbuf());
+		// Execute print() and read().
+		auto result = exec(env, "print(read());");
+		// Reset cin and cout to normal.
+		std::cin.rdbuf(cin_rdbuf);
+		std::cout.rdbuf(cout_rdbuf);
+		// Now that the status quo has been restored, check the results. Should be the test string in quotes with a newline.
+		CHECK(result.has_value());
+		CHECK("\"test\"\n" == sout.str());
 	}
 }
