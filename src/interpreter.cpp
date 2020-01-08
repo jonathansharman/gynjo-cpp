@@ -521,7 +521,7 @@ namespace gynjo {
 			});
 	}
 
-	auto eval(env_ptr const& env, std::string const& input) -> eval_result {
+	auto eval(env_ptr const& env, std::string_view input) -> eval_result {
 		// Lex.
 		lex_result const lex_result = lex(input);
 		if (!lex_result.has_value()) { return tl::unexpected{"(lex error) " + lex_result.error()}; }
@@ -648,7 +648,7 @@ namespace gynjo {
 			});
 	}
 
-	auto exec(env_ptr const& env, std::string const& input) -> exec_result {
+	auto exec(env_ptr const& env, std::string_view input) -> exec_result {
 		// Lex.
 		lex_result const lex_result = lex(input);
 		if (!lex_result.has_value()) { return tl::unexpected{"(lex error) " + lex_result.error()}; }

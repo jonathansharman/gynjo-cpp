@@ -14,8 +14,8 @@
 namespace gynjo {
 	namespace {
 		// For a little brevity...
-		using str_to_tok_t = std::function<std::optional<tok::token>(std::string const&)>;
 		using sv = std::string_view;
+		using str_to_tok_t = std::function<std::optional<tok::token>(sv)>;
 		constexpr auto flags = std::regex::ECMAScript | std::regex::optimize;
 
 		//! Handles the simplest regex/str_to_tok_t cases.
@@ -94,13 +94,14 @@ namespace gynjo {
 			{std::regex{R"...([a-zA-Z_]+)...", flags}, [](sv sv) { return tok::sym{sv.data()}; }}};
 	}
 
-	auto lex(std::string const& input) -> tl::expected<std::vector<tok::token>, std::string> {
+	auto lex(std::string_view input) -> tl::expected<std::vector<tok::token>, std::string> {
 		using namespace std::string_literals;
 
 		std::vector<tok::token> result;
 		for (auto it = input.cbegin(); it != input.cend();) {
 			bool found = false;
-			std::smatch token_match;
+			std::match_results<std::string_view::const_iterator> token_match;
+			// std::smatch token_match;
 			for (auto const& [regex, match_to_token] : regexes_to_tokens) {
 				if (std::regex_search(it, input.cend(), token_match, regex, std::regex_constants::match_continuous)) {
 					found = true;

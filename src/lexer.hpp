@@ -15,5 +15,5 @@ namespace gynjo {
 	using lex_result = tl::expected<std::vector<tok::token>, std::string>;
 
 	//! Lexes @p input into a vector of tokens, if possible.
-	auto lex(std::string const& input) -> lex_result;
+	auto lex(std::string_view input) -> lex_result;
 }
