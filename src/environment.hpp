@@ -7,20 +7,16 @@
 
 #include "values.hpp"
 
-#include <memory>
 #include <string>
 #include <unordered_map>
 
 namespace gynjo {
 	struct environment {
-		//! Shared pointer to environment, for convenience.
-		using ptr = std::shared_ptr<environment>;
-
 		//! Convenience factory method for creating a new empty shared environment pointer.
-		static auto make_empty() -> ptr;
+		static auto make_empty() -> env_ptr;
 
 		//! Convenience factory method for creating a new shared environment pointer with core libs loaded.
-		static auto make_with_core_libs() -> ptr;
+		static auto make_with_core_libs() -> env_ptr;
 
 		//! Variables mappings created within the local scope.
 		std::unordered_map<std::string, val::value> local_vars;
@@ -29,12 +25,12 @@ namespace gynjo {
 		std::shared_ptr<environment> parent_env;
 
 		//! @param parent_env A pointer to the parent environment, if any.
-		environment(ptr parent_env = nullptr);
+		environment(env_ptr parent_env = nullptr);
 
 		//! Returns the value of the variable with name @name or nullopt if the variable is undefined.
-		auto lookup(std::string const& name) -> std::optional<val::value> const;
+		auto lookup(std::string_view name) -> std::optional<val::value> const;
 	};
 
 	//! Attempts to import @p lib into @p env and displays an error message on failure.
-	auto import_lib(environment::ptr const& env, std::string_view lib) -> void;
+	auto import_lib(env_ptr const& env, std::string_view lib) -> void;
 }

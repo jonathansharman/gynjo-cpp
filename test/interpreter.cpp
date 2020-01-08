@@ -398,7 +398,7 @@ TEST_SUITE("interpreter") {
 		CHECK(expected == actual.value());
 	}
 
-	TEST_CASE("print() and read()") {
+	TEST_CASE("Intrinsic I/O functions") {
 		auto env = environment::make_empty();
 		// Temporarily redirect cin and cout to string streams to allow control of input and observation of output.
 		std::istringstream sin{"test"};

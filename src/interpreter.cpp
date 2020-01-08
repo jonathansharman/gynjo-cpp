@@ -22,7 +22,7 @@ using namespace std::string_literals;
 namespace gynjo {
 	namespace {
 		template <typename F>
-		auto eval_binary(environment::ptr const& env, expr const& a, expr const& b, F&& f) -> eval_result {
+		auto eval_binary(env_ptr const& env, expr const& a, expr const& b, F&& f) -> eval_result {
 			return eval(env, a) //
 				.and_then([&](val::value const& a) { //
 					return eval(env, b) //
@@ -33,7 +33,8 @@ namespace gynjo {
 		}
 
 		template <typename F>
-		auto bin_num_op(val::value const& left, val::value const& right, std::string_view op_name, F&& op) -> eval_result {
+		auto bin_num_op(env_ptr const& env, val::value const& left, val::value const& right, std::string_view op_name, F&& op)
+			-> eval_result {
 			return match2(
 				left,
 				right,
@@ -47,10 +48,10 @@ namespace gynjo {
 				// Non-empty list
 				[&](val::list const& left, val::num const& right) -> eval_result {
 					// Perform operation on head.
-					auto head_result = bin_num_op(*left.head, right, op_name, op);
+					auto head_result = bin_num_op(env, *left.head, right, op_name, op);
 					if (!head_result.has_value()) { return head_result; }
 					// Perform operation on tail.
-					auto tail_result = bin_num_op(*left.tail, right, op_name, std::forward<F>(op));
+					auto tail_result = bin_num_op(env, *left.tail, right, op_name, std::forward<F>(op));
 					if (!tail_result.has_value()) { return tail_result; }
 					// Combine results.
 					return val::list{//
@@ -59,10 +60,10 @@ namespace gynjo {
 				},
 				[&](val::num const& left, val::list const& right) -> eval_result {
 					// Perform operation on head.
-					auto head_result = bin_num_op(left, *right.head, op_name, op);
+					auto head_result = bin_num_op(env, left, *right.head, op_name, op);
 					if (!head_result.has_value()) { return head_result; }
 					// Perform operation on tail.
-					auto tail_result = bin_num_op(left, *right.tail, op_name, std::forward<F>(op));
+					auto tail_result = bin_num_op(env, left, *right.tail, op_name, std::forward<F>(op));
 					if (!tail_result.has_value()) { return tail_result; }
 					// Combine results.
 					return val::list{//
@@ -71,8 +72,8 @@ namespace gynjo {
 				},
 				// Invalid
 				[&](auto const&, auto const&) -> eval_result {
-					return tl::unexpected{
-						fmt::format("cannot perform {} with {} and {}", op_name, to_string(left), to_string(right))};
+					return tl::unexpected{fmt::format(
+						"cannot perform {} with {} and {}", op_name, to_string(left, env), to_string(right, env))};
 				});
 		}
 
@@ -103,17 +104,17 @@ namespace gynjo {
 							return match(
 								*local_env->lookup("list"),
 								[](val::list const& list) -> eval_result { return *list.head; },
-								[](auto const& arg) -> eval_result {
-									return tl::unexpected{
-										fmt::format("top() expected a non-empty list, found {}", val::to_string(arg))};
+								[&](auto const& arg) -> eval_result {
+									return tl::unexpected{fmt::format(
+										"top() expected a non-empty list, found {}", val::to_string(arg, local_env))};
 								});
 						case intrinsic::pop:
 							return match(
 								*local_env->lookup("list"),
 								[](val::list const& list) -> eval_result { return *list.tail; },
-								[](auto const& arg) -> eval_result {
-									return tl::unexpected{
-										fmt::format("pop() expected a non-empty list, found {}", val::to_string(arg))};
+								[&](auto const& arg) -> eval_result {
+									return tl::unexpected{fmt::format(
+										"pop() expected a non-empty list, found {}", val::to_string(arg, local_env))};
 								});
 						case intrinsic::push:
 							return match(
@@ -125,12 +126,12 @@ namespace gynjo {
 								[&](val::list const& list) -> eval_result {
 									return val::list{val::make_value(*local_env->lookup("value")), val::make_value(list)};
 								},
-								[](auto const& arg) -> eval_result {
+								[&](auto const& arg) -> eval_result {
 									return tl::unexpected{
-										fmt::format("push() expected a list, found {}", val::to_string(arg))};
+										fmt::format("push() expected a list, found {}", val::to_string(arg, local_env))};
 								});
 						case intrinsic::print:
-							std::cout << fmt::format("{}\n", to_string(*local_env->lookup("value")));
+							std::cout << fmt::format("{}\n", to_string(*local_env->lookup("value"), local_env));
 							return val::make_tup();
 						case intrinsic::read: {
 							std::string result;
@@ -144,15 +145,15 @@ namespace gynjo {
 				});
 		}
 
-		auto negate(val::value const& value) -> eval_result {
+		auto negate(env_ptr const& env, val::value const& value) -> eval_result {
 			return match(
 				value,
 				[](val::num num) -> eval_result { return -num; },
-				[&](auto const&) -> eval_result { return tl::unexpected{"cannot negate " + to_string(value)}; });
+				[&](auto const&) -> eval_result { return tl::unexpected{"cannot negate " + to_string(value, env)}; });
 		}
 	}
 
-	auto eval(environment::ptr const& env, expr const& node) -> eval_result {
+	auto eval(env_ptr const& env, expr const& node) -> eval_result {
 		return match(
 			node.value,
 			[&](cond const& cond) {
@@ -168,7 +169,7 @@ namespace gynjo {
 						},
 						[&](auto const&) -> eval_result {
 							return tl::unexpected{
-								fmt::format("expected boolean in conditional test, found {}", to_string(test_value))};
+								fmt::format("expected boolean in conditional test, found {}", to_string(test_value, env))};
 						});
 				});
 			},
@@ -193,8 +194,8 @@ namespace gynjo {
 				auto const left_result = eval(env, *and_.left);
 				if (!left_result.has_value()) { return left_result; }
 				if (!std::holds_alternative<tok::boolean>(left_result.value())) {
-					return tl::unexpected{fmt::format(
-						"cannot take logical conjunction of non-boolean value {}", to_string(left_result.value()))};
+					return tl::unexpected{fmt::format("cannot take logical conjunction of non-boolean value {}",
+						to_string(left_result.value(), env))};
 				}
 				bool const left = std::get<tok::boolean>(left_result.value()).value;
 				// Short-circuit if possible.
@@ -203,8 +204,8 @@ namespace gynjo {
 				auto const right_result = eval(env, *and_.right);
 				if (!right_result.has_value()) { return right_result; }
 				if (!std::holds_alternative<tok::boolean>(right_result.value())) {
-					return tl::unexpected{fmt::format(
-						"cannot take logical conjunction of non-boolean value {}", to_string(right_result.value()))};
+					return tl::unexpected{fmt::format("cannot take logical conjunction of non-boolean value {}",
+						to_string(right_result.value(), env))};
 				}
 				auto const right = std::get<tok::boolean>(right_result.value()).value;
 				return tok::boolean{left && right};
@@ -214,8 +215,8 @@ namespace gynjo {
 				auto const left_result = eval(env, *or_.left);
 				if (!left_result.has_value()) { return left_result; }
 				if (!std::holds_alternative<tok::boolean>(left_result.value())) {
-					return tl::unexpected{fmt::format(
-						"cannot take logical disjunction of non-boolean value {}", to_string(left_result.value()))};
+					return tl::unexpected{fmt::format("cannot take logical disjunction of non-boolean value {}",
+						to_string(left_result.value(), env))};
 				}
 				bool const left = std::get<tok::boolean>(left_result.value()).value;
 				// Short-circuit if possible.
@@ -224,19 +225,19 @@ namespace gynjo {
 				auto const right_result = eval(env, *or_.right);
 				if (!right_result.has_value()) { return right_result; }
 				if (!std::holds_alternative<tok::boolean>(right_result.value())) {
-					return tl::unexpected{fmt::format(
-						"cannot take logical disjunction of non-boolean value {}", to_string(right_result.value()))};
+					return tl::unexpected{fmt::format("cannot take logical disjunction of non-boolean value {}",
+						to_string(right_result.value(), env))};
 				}
 				auto const right = std::get<tok::boolean>(right_result.value()).value;
 				return tok::boolean{left || right};
 			},
 			[&](not_ const& not_) {
-				return eval(env, *not_.expr).and_then([](val::value const& val) -> eval_result {
+				return eval(env, *not_.expr).and_then([&](val::value const& val) -> eval_result {
 					return match(
 						val,
 						[](tok::boolean b) -> eval_result { return tok::boolean{!b.value}; },
 						[&](auto const&) -> eval_result {
-							return tl::unexpected{fmt::format("cannot take logical negation of {}", to_string(val))};
+							return tl::unexpected{fmt::format("cannot take logical negation of {}", to_string(val, env))};
 						});
 				});
 			},
@@ -251,7 +252,7 @@ namespace gynjo {
 				});
 			},
 			[&](lt const& lt) {
-				return eval_binary(env, *lt.left, *lt.right, [](val::value const& a, val::value const& b) -> eval_result {
+				return eval_binary(env, *lt.left, *lt.right, [&](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
@@ -259,12 +260,13 @@ namespace gynjo {
 							return tok::boolean{left < right};
 						},
 						[&](auto const&, auto const&) -> eval_result {
-							return tl::unexpected{fmt::format("cannot compare {} and {}", to_string(a), to_string(b))};
+							return tl::unexpected{
+								fmt::format("cannot compare {} and {}", to_string(a, env), to_string(b, env))};
 						});
 				});
 			},
 			[&](leq const& leq) {
-				return eval_binary(env, *leq.left, *leq.right, [](val::value const& a, val::value const& b) -> eval_result {
+				return eval_binary(env, *leq.left, *leq.right, [&](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
@@ -272,12 +274,13 @@ namespace gynjo {
 							return tok::boolean{left <= right};
 						},
 						[&](auto const&, auto const&) -> eval_result {
-							return tl::unexpected{fmt::format("cannot compare {} and {}", to_string(a), to_string(b))};
+							return tl::unexpected{
+								fmt::format("cannot compare {} and {}", to_string(a, env), to_string(b, env))};
 						});
 				});
 			},
 			[&](gt const& gt) {
-				return eval_binary(env, *gt.left, *gt.right, [](val::value const& a, val::value const& b) -> eval_result {
+				return eval_binary(env, *gt.left, *gt.right, [&](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
@@ -285,12 +288,13 @@ namespace gynjo {
 							return tok::boolean{left > right};
 						},
 						[&](auto const&, auto const&) -> eval_result {
-							return tl::unexpected{fmt::format("cannot compare {} and {}", to_string(a), to_string(b))};
+							return tl::unexpected{
+								fmt::format("cannot compare {} and {}", to_string(a, env), to_string(b, env))};
 						});
 				});
 			},
 			[&](geq const& geq) {
-				return eval_binary(env, *geq.left, *geq.right, [](val::value const& a, val::value const& b) -> eval_result {
+				return eval_binary(env, *geq.left, *geq.right, [&](val::value const& a, val::value const& b) -> eval_result {
 					return match2(
 						a,
 						b,
@@ -298,24 +302,25 @@ namespace gynjo {
 							return tok::boolean{left >= right};
 						},
 						[&](auto const&, auto const&) -> eval_result {
-							return tl::unexpected{fmt::format("cannot compare {} and {}", to_string(a), to_string(b))};
+							return tl::unexpected{
+								fmt::format("cannot compare {} and {}", to_string(a, env), to_string(b, env))};
 						});
 				});
 			},
 			[&](add const& add) {
 				return eval_binary(
-					env, *add.addend1, *add.addend2, [](val::value const& addend1, val::value const& addend2) -> eval_result {
+					env, *add.addend1, *add.addend2, [&](val::value const& addend1, val::value const& addend2) -> eval_result {
 						return bin_num_op(
-							addend1, addend2, "addition", [](val::num const& addend1, val::num const& addend2) -> eval_result {
+							env, addend1, addend2, "addition", [](val::num const& addend1, val::num const& addend2) -> eval_result {
 								return addend1 + addend2;
 							});
 					});
 			},
 			[&](sub const& sub) {
 				return eval_binary(
-					env, *sub.minuend, *sub.subtrahend, [](val::value const& minuend, val::value const& subtrahend) -> eval_result {
+					env, *sub.minuend, *sub.subtrahend, [&](val::value const& minuend, val::value const& subtrahend) -> eval_result {
 						return bin_num_op(
-							minuend, subtrahend, "subtraction", [](val::num const& minuend, val::num const& subtrahend) -> eval_result {
+							env, minuend, subtrahend, "subtraction", [](val::num const& minuend, val::num const& subtrahend) -> eval_result {
 								return minuend - subtrahend;
 							});
 					});
@@ -340,7 +345,7 @@ namespace gynjo {
 							auto const& f = items[i];
 							// Apply negation if necessary.
 							if (cluster.negations[i + 1]) {
-								auto negate_result = negate(items[i + 1]);
+								auto negate_result = negate(env, items[i + 1]);
 								if (negate_result.has_value()) {
 									items[i + 1] = negate_result.value();
 								} else {
@@ -377,7 +382,7 @@ namespace gynjo {
 						auto const& base = items[i];
 						// Apply negation if necessary.
 						if (cluster.negations[i + 1]) {
-							auto negate_result = negate(items[i + 1]);
+							auto negate_result = negate(env, items[i + 1]);
 							if (negate_result.has_value()) {
 								items[i + 1] = negate_result.value();
 							} else {
@@ -386,7 +391,7 @@ namespace gynjo {
 						}
 						auto const& exp = items[i + 1];
 						auto power = bin_num_op(
-							base, exp, "exponentiation", [](val::num const& base, val::num const& exponent) -> eval_result {
+							env, base, exp, "exponentiation", [](val::num const& base, val::num const& exponent) -> eval_result {
 								return boost::multiprecision::pow(base, exponent);
 							});
 						if (power.has_value()) {
@@ -413,7 +418,7 @@ namespace gynjo {
 							auto const& factor1 = items[i];
 							// Apply negation if necessary.
 							if (cluster.negations[i + 1]) {
-								auto negate_result = negate(items[i + 1]);
+								auto negate_result = negate(env, items[i + 1]);
 								if (negate_result.has_value()) {
 									items[i + 1] = negate_result.value();
 								} else {
@@ -422,7 +427,7 @@ namespace gynjo {
 							}
 							auto const& factor2 = items[i + 1];
 							auto product = bin_num_op(
-								factor1, factor2, "multiplication", [](val::num const& factor1, val::num const& factor2) -> eval_result {
+								env, factor1, factor2, "multiplication", [](val::num const& factor1, val::num const& factor2) -> eval_result {
 									return factor1 * factor2;
 								});
 							if (product.has_value()) {
@@ -439,7 +444,7 @@ namespace gynjo {
 							auto const& dividend = items[i];
 							// Apply negation if necessary.
 							if (cluster.negations[i + 1]) {
-								auto negate_result = negate(items[i + 1]);
+								auto negate_result = negate(env, items[i + 1]);
 								if (negate_result.has_value()) {
 									items[i + 1] = negate_result.value();
 								} else {
@@ -448,7 +453,7 @@ namespace gynjo {
 							}
 							auto const& divisor = items[i + 1];
 							auto quotient = bin_num_op(
-								dividend, divisor, "division", [](val::num const& dividend, val::num const& divisor) -> eval_result {
+								env, dividend, divisor, "division", [](val::num const& dividend, val::num const& divisor) -> eval_result {
 									if (divisor == 0) { return tl::unexpected{"division by zero"s}; }
 									return dividend / divisor;
 								});
@@ -465,7 +470,7 @@ namespace gynjo {
 				// At this point, all values should be folded into the front of items.
 				// Apply final negation if necessary.
 				if (cluster.negations.front()) {
-					auto negate_result = negate(items.front());
+					auto negate_result = negate(env, items.front());
 					if (negate_result.has_value()) {
 						items.front() = negate_result.value();
 					} else {
@@ -516,7 +521,7 @@ namespace gynjo {
 			});
 	}
 
-	auto eval(environment::ptr const& env, std::string const& input) -> eval_result {
+	auto eval(env_ptr const& env, std::string const& input) -> eval_result {
 		// Lex.
 		lex_result const lex_result = lex(input);
 		if (!lex_result.has_value()) { return tl::unexpected{"(lex error) " + lex_result.error()}; }
@@ -532,7 +537,7 @@ namespace gynjo {
 		return eval(env, parse_result.value().expr);
 	}
 
-	auto exec(environment::ptr const& env, stmt const& stmt) -> exec_result {
+	auto exec(env_ptr const& env, stmt const& stmt) -> exec_result {
 		return match(
 			stmt.value,
 			[](nop) -> exec_result { return std::monostate(); },
@@ -570,8 +575,8 @@ namespace gynjo {
 						}
 					},
 					[&](auto const&) -> exec_result {
-						return tl::unexpected{
-							fmt::format("expected boolean in conditional test, found {}", to_string(test_result.value()))};
+						return tl::unexpected{fmt::format(
+							"expected boolean in conditional test, found {}", to_string(test_result.value(), env))};
 					});
 			},
 			[&](while_loop const& loop) -> exec_result {
@@ -585,7 +590,7 @@ namespace gynjo {
 					// Check for non-boolean in the test expression.
 					if (!std::holds_alternative<tok::boolean>(test_result.value())) {
 						return tl::unexpected{
-							"while-loop test value must be boolean, found " + to_string(test_result.value())};
+							"while-loop test value must be boolean, found " + to_string(test_result.value(), env)};
 					}
 					auto const test = std::get<tok::boolean>(test_result.value());
 					if (test.value) {
@@ -628,7 +633,7 @@ namespace gynjo {
 						return std::monostate{};
 					},
 					[&](auto const&) -> exec_result {
-						return tl::unexpected{fmt::format("expected a list, found {}", to_string(range_result.value()))};
+						return tl::unexpected{fmt::format("expected a list, found {}", to_string(range_result.value(), env))};
 					});
 			},
 			[&](ret const&) -> exec_result { return tl::unexpected{"cannot return outside statement block"s}; },
@@ -637,13 +642,13 @@ namespace gynjo {
 				if (!eval_result.has_value()) { return tl::unexpected{eval_result.error()}; }
 				// Expression statements must evaluate to nothing.
 				if (eval_result.value() != val::value{val::make_tup()}) {
-					return tl::unexpected{"unused expression result: " + to_string(eval_result.value())};
+					return tl::unexpected{"unused expression result: " + to_string(eval_result.value(), env)};
 				}
 				return std::monostate{};
 			});
 	}
 
-	auto exec(environment::ptr const& env, std::string const& input) -> exec_result {
+	auto exec(env_ptr const& env, std::string const& input) -> exec_result {
 		// Lex.
 		lex_result const lex_result = lex(input);
 		if (!lex_result.has_value()) { return tl::unexpected{"(lex error) " + lex_result.error()}; }

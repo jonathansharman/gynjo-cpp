@@ -94,6 +94,10 @@ namespace gynjo {
 		}
 
 		//! Converts the value @p val to a user-readable string.
-		auto to_string(value const& val) -> std::string;
+		//! @param env Used for values whose string representation is environment-dependent.
+		auto to_string(value const& val, std::shared_ptr<environment> const& env) -> std::string;
+
+		//! Converts the value @p val to @p int if it's numerical, otherwise returns nullopt.
+		auto as_int(value const& val) -> std::optional<int>;
 	}
 }

@@ -51,7 +51,7 @@ auto main(int argc, char* argv[]) -> int {
 		auto eval_result = eval(env, input);
 		if (eval_result.has_value()) {
 			// Print the computed value.
-			fmt::print("{}\n", val::to_string(eval_result.value()));
+			fmt::print("{}\n", val::to_string(eval_result.value(), env));
 		} else {
 			// Invalid expression. Try a statement instead.
 			auto exec_result = exec(env, input);

@@ -17,14 +17,14 @@ namespace gynjo {
 	using exec_result = tl::expected<std::monostate, std::string>;
 
 	//! If possible, computes the value of @p expr in the context of @env.
-	auto eval(environment::ptr const& env, expr const& expr) -> eval_result;
+	auto eval(env_ptr const& env, expr const& expr) -> eval_result;
 
 	//! If possible, computes the value of the expression contained in @p input in the context of @env.
-	auto eval(environment::ptr const& env, std::string const& input) -> eval_result;
+	auto eval(env_ptr const& env, std::string const& input) -> eval_result;
 
 	//! If possible, executes @p stmt in the context of @env.
-	auto exec(environment::ptr const& env, stmt const& stmt) -> exec_result;
+	auto exec(env_ptr const& env, stmt const& stmt) -> exec_result;
 
 	//! If possible, executes the statements contained in @p input in the context of @env.
-	auto exec(environment::ptr const& env, std::string const& input) -> exec_result;
+	auto exec(env_ptr const& env, std::string const& input) -> exec_result;
 }
