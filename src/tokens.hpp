@@ -71,6 +71,10 @@ namespace gynjo::tok {
 	struct neq {
 		auto operator<=>(neq const&) const noexcept = default;
 	};
+	//! Token for "~" (approximately equal).
+	struct approx {
+		auto operator<=>(approx const&) const noexcept = default;
+	};
 	//! Token for "<".
 	struct lt {
 		auto operator<=>(lt const&) const noexcept = default;
@@ -174,7 +178,7 @@ namespace gynjo::tok {
 		if_, then, else_, // branch
 		while_, for_, in, do_, ret, // loops/blocks
 		and_, or_, not_, // boolean ops
-		eq, neq, lt, leq, gt, geq, // comparison ops
+		eq, neq, lt, leq, gt, geq, approx, // comparison ops
 		plus, minus, mul, div, exp, // arithmetic ops
 		lparen, rparen, lsquare, rsquare, lcurly, rcurly, // brackets
 		com, semicolon, arrow, que, colon, // punctuation
@@ -202,6 +206,7 @@ namespace gynjo::tok {
 			[](not_ const&) { return "not"s; },
 			[](eq const&) { return "="s; },
 			[](neq const&) { return "!="s; },
+			[](approx const&) { return "~"s; },
 			[](lt const&) { return "<"s; },
 			[](leq const&) { return "<="s; },
 			[](gt const&) { return ">"s; },

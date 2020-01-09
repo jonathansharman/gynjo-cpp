@@ -36,6 +36,7 @@ namespace gynjo {
 			// Operators/separators
 			simple(R"...(=)...", tok::eq{}),
 			simple(R"...(!=)...", tok::neq{}),
+			simple(R"...(~)...", tok::approx{}),
 			simple(R"...(<=)...", tok::leq{}),
 			simple(R"...(<)...", tok::lt{}),
 			simple(R"...(>=)...", tok::geq{}),

@@ -332,19 +332,20 @@ namespace gynjo {
 			});
 		}
 
-		//! Parses a series of equality/inequality checks.
+		//! Parses a series of equality, inequality, or approximate equality checks.
 		auto parse_eq_checks(token_it begin, token_it end) -> parse_expr_result {
 			return parse_comparisons(begin, end).and_then([&](it_expr result) -> parse_expr_result {
 				auto it = std::move(result.it);
 				auto cmps = std::move(result.expr);
-				auto is_comparison = [](tok::token const& token) {
+				auto is_eq_check = [](tok::token const& token) {
 					return match(
 						token,
 						[](tok::eq) { return true; },
 						[](tok::neq) { return true; },
+						[](tok::approx) { return true; },
 						[](auto const&) { return false; });
 				};
-				while (it != end && is_comparison(*it)) {
+				while (it != end && is_eq_check(*it)) {
 					// Parse next result.
 					auto const token = *it;
 					auto next_result = parse_comparisons(it + 1, end);
@@ -360,6 +361,9 @@ namespace gynjo {
 						},
 						[&](tok::neq) {
 							cmps = expr{neq{make_expr(std::move(cmps)), make_expr(std::move(next_cmp))}};
+						},
+						[&](tok::approx) {
+							cmps = expr{approx{make_expr(std::move(cmps)), make_expr(std::move(next_cmp))}};
 						},
 						[&](auto const&) { /*unreachable*/ });
 				}

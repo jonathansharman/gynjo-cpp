@@ -63,18 +63,25 @@ namespace gynjo {
 		auto operator==(not_ const&) const noexcept -> bool;
 	};
 
-	//! Less-than comparison expression.
+	//! Equal comparison expression.
 	struct eq {
 		expr_ptr left;
 		expr_ptr right;
 		auto operator==(eq const&) const noexcept -> bool;
 	};
 
-	//! Less-than comparison expression.
+	//! Not-equal comparison expression.
 	struct neq {
 		expr_ptr left;
 		expr_ptr right;
 		auto operator==(neq const&) const noexcept -> bool;
+	};
+
+	//! Approximately equal expression.
+	struct approx {
+		expr_ptr left;
+		expr_ptr right;
+		auto operator==(approx const&) const noexcept -> bool;
 	};
 
 	//! Less-than comparison expression.
@@ -213,7 +220,30 @@ namespace gynjo {
 
 	//! Union type of all expression types.
 	struct expr {
-		std::variant<cond, block, and_, or_, not_, eq, neq, lt, leq, gt, geq, add, sub, cluster, lambda, tup_expr, list_expr, tok::boolean, tok::num, std::string, tok::sym> value;
+		std::variant< //
+			cond,
+			block,
+			and_,
+			or_,
+			not_,
+			eq,
+			neq,
+			approx,
+			lt,
+			leq,
+			gt,
+			geq,
+			add,
+			sub,
+			cluster,
+			lambda,
+			tup_expr,
+			list_expr,
+			tok::boolean,
+			tok::num,
+			std::string,
+			tok::sym>
+			value;
 
 		auto operator==(expr const&) const noexcept -> bool = default;
 	};

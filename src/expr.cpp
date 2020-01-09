@@ -45,6 +45,10 @@ namespace gynjo {
 		return *left == *that.left && *right == *that.right;
 	}
 
+	auto approx::operator==(approx const& that) const noexcept -> bool {
+		return *left == *that.left && *right == *that.right;
+	}
+
 	auto lt::operator==(lt const& that) const noexcept -> bool {
 		return *left == *that.left && *right == *that.right;
 	}
@@ -146,6 +150,9 @@ namespace gynjo {
 			[](not_ const& not_) { return fmt::format("(not {})", to_string(*not_.expr)); },
 			[](eq const& eq) { return fmt::format("({} == {})", to_string(*eq.left), to_string(*eq.right)); },
 			[](neq const& neq) { return fmt::format("({} != {})", to_string(*neq.left), to_string(*neq.right)); },
+			[](approx const& approx) {
+				return fmt::format("({} ~ {})", to_string(*approx.left), to_string(*approx.right));
+			},
 			[](lt const& lt) { return fmt::format("({} < {})", to_string(*lt.left), to_string(*lt.right)); },
 			[](leq const& leq) { return fmt::format("({} <= {})", to_string(*leq.left), to_string(*leq.right)); },
 			[](gt const& gt) { return fmt::format("({} > {})", to_string(*gt.left), to_string(*gt.right)); },

@@ -30,6 +30,7 @@ TEST_SUITE("lexer") {
 			leq{},
 			gt{},
 			geq{},
+			approx{},
 			mul{},
 			lparen{},
 			plus{},
@@ -48,7 +49,7 @@ TEST_SUITE("lexer") {
 			com{},
 			que{},
 			colon{}};
-		auto const actual = lex("let=!=<<=>>=*(+-->)[]^***/.1 0 0.1,?:");
+		auto const actual = lex("let=!=<<=>>=~*(+-->)[]^***/.1 0 0.1,?:");
 		CHECK(expected == actual.value());
 	}
 

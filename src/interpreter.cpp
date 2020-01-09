@@ -251,6 +251,12 @@ namespace gynjo {
 					return tok::boolean{left != right};
 				});
 			},
+			[&](approx const& approx) {
+				return eval_binary(
+					env, *approx.left, *approx.right, [&](val::value const& left, val::value const& right) -> eval_result {
+						return tok::boolean{to_string(left, env) == to_string(right, env)};
+					});
+			},
 			[&](lt const& lt) {
 				return eval_binary(env, *lt.left, *lt.right, [&](val::value const& a, val::value const& b) -> eval_result {
 					return match2(

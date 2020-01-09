@@ -67,6 +67,10 @@ TEST_SUITE("interpreter") {
 			CHECK(t == eval(env, "1 != 2").value());
 			CHECK(f == eval(env, "1 != 1").value());
 		}
+		SUBCASE("~") {
+			CHECK(t == eval(env, "1/3 ~ 0.333333333333").value());
+			CHECK(f == eval(env, "1/3 ~ 0.333").value());
+		}
 		SUBCASE("<") {
 			CHECK(t == eval(env, "1 < 2").value());
 			CHECK(f == eval(env, "1 < 1").value());
