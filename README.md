@@ -2,6 +2,8 @@
 
 A simple CLI arithmetic calculator.
 
+Note: The implementation of Gynjo [has moved](https://github.com/jonathansharman/gynjo) to Rust. This repo is no longer maintained.
+
 Requires
 --------
 - Support for C++20 features
